@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flare_cnn"
+version = "0.2.0"
+description = "Sub-topic 1 (J26-DS-319): two-head 1D-CNN for TESS flare detection and energy-tier classification"
+requires-python = ">=3.10"
+authors = [{ name = "Kariyawasam K G L (IT23377608)" }]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

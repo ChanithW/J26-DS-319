@@ -1,0 +1,29 @@
+# Component 1 settings
+# Every value here matches what was used to train and evaluate model v2.
+# Change a value here instead of editing the code.
+
+paths:
+  model: models/best.keras              # trained two-head CNN (v2, SPLIT_W2)
+  model_settings: models/settings.json  # threshold and training details
+  prep_settings: models/prep_settings.json  # star-info scaling (mean/std) from notebook 02
+  output_dir: reports/runs              # where the app and scripts save CSVs and images
+
+window:
+  length: 128          # points per window (128 x 2 min = about 4.3 hours)
+  stride: 16           # move the window 16 points (32 min) each step
+  cadence_days: 0.001388889   # 2 minutes in days (2 / 1440)
+
+detection:
+  threshold: 0.77      # fallback only: the real value is read from models/settings.json
+  peak_min_frac: 0.2   # keep a detection only if its peak is between 20% ...
+  peak_max_frac: 0.6   # ... and 60% of the window (avoids counting one flare twice)
+  merge_points: 10     # peaks closer than 10 points (20 min) are the same flare
+  weak_snr: 5          # SNR below this = weak flare
+
+energy:
+  tier_names: [C, M, X, Superflare]
+  tier_edges_erg: [1.0e+32, 1.0e+33, 1.0e+34]
+
+catalogue:
+  match_tolerance_days: 0.0069   # 10 minutes: a detection within this of a catalogue peak is a match
+  dedupe_days: 0.005             # same flare listed in both Günther and Lin
