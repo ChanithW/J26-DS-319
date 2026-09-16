@@ -13,8 +13,9 @@ import pandas as pd
 
 from .energy import TIER_NAMES
 
-FLARE_COLUMNS = ["flare_id", "tic_id", "gaia_dr3_id", "sector", "star_type", "peak_time_btjd",
-                 "flare_prob", "energy_tier", "tier_conf", "amplitude", "snr", "weak", "in_catalogue"]
+FLARE_COLUMNS = ["flare_id", "tic_id", "gaia_dr3_id", "sector", "peak_time_btjd",
+                 "flare_prob", "energy_tier", "tier_conf", "amplitude_pct", "snr", "weak",
+                 "in_catalogue"]
 
 
 def flares_table(result):
@@ -25,7 +26,7 @@ def flares_table(result):
     df["tic_id"] = f"TIC {tic}"
     df["gaia_dr3_id"] = f"Gaia DR3 {star['gaia']}" if star["gaia"] else ""
     df["sector"] = sec
-    df["star_type"] = star["type"]
+    df["amplitude_pct"] = (df["amplitude"] * 100).round(2)
     if "in_catalogue" not in df:
         df["in_catalogue"] = False
     return df[FLARE_COLUMNS]

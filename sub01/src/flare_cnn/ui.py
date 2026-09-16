@@ -125,34 +125,19 @@ def _show_result(out: dict, next_page) -> None:
     st.subheader("Detected flares")
     if len(flares):
         table = flares[["peak_time_btjd", "flare_prob", "energy_tier", "tier_conf",
-                        "amplitude", "snr", "weak", "in_catalogue"]].copy()
-        table["amplitude"] = (table["amplitude"] * 100).round(2)
+                        "amplitude_pct", "snr", "weak", "in_catalogue"]].copy()
         table = table.rename(columns={
             "peak_time_btjd": "Peak time (BTJD)", "flare_prob": "Flare probability",
             "energy_tier": "Energy tier", "tier_conf": "Tier confidence",
-            "amplitude": "Peak brightening (%)", "snr": "SNR", "weak": "Weak",
+            "amplitude_pct": "Peak brightening (%)", "snr": "SNR", "weak": "Weak",
             "in_catalogue": "In catalogue"})
         st.dataframe(table, hide_index=True, width="stretch")
     else:
         st.write("No flares above the detection threshold in this sector.")
 
-    d1, d2, _ = st.columns([1, 1, 2])
+    d1, _ = st.columns([1, 3])
     d1.download_button("⬇ Flares CSV", _csv(flares), f"c1_flares_TIC{r['tic']}_S{r['sector']}.csv",
                        "text/csv", width="stretch")
-    d2.download_button("⬇ Star summary CSV", _csv(pd.DataFrame([s])),
-                       f"c1_summary_TIC{r['tic']}_S{r['sector']}.csv", "text/csv",
-                       width="stretch")
-
-    with st.expander("Payload for Stage 2 (stage contract)"):
-        st.json(out["payload"])
-
-    if st.button("Save result and continue to Stage 2  →", type="primary"):
-        get_pipeline()[STAGE1_KEY] = out["payload"]
-        _reset_next_stage()
-        if next_page:
-            st.switch_page(next_page)
-        else:
-            st.success("Saved to st.session_state['pipeline']['stage1'].")
 
 
 def _light_curve_figure(r: dict, flares: pd.DataFrame) -> go.Figure:
