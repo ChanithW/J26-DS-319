@@ -52,10 +52,8 @@ def _reset_next_stage() -> None:
 def render(next_page: str | None = None, analyzer=None) -> None:
     """Draw the whole page. analyzer is only for tests (see pipeline.analyse)."""
     st.title("🌟 Stage 1 · Flare Detection & Energy Classification")
-    st.caption("Sub-topic 1 · Kariyawasam K.G.L. (IT23377608) · "
-               "two-head 1D-CNN on TESS 2-minute light curves")
     st.info("Enter a TESS star. The model finds every flare and grades its energy tier "
-            "(C / M / X / Superflare) in one pass. The result can then be passed on to Stage 2.")
+            "(C / M / X / Superflare) in one pass.")
 
     tab_one, tab_batch, tab_info = st.tabs(["Single star", "Batch CSV", "Model info"])
     with tab_one:
