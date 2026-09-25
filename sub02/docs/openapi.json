@@ -1,0 +1,874 @@
+{
+  "components": {
+    "schemas": {
+      "Body_predict_file_api_v1_predict_file_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          },
+          "run_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Name"
+          },
+          "save_run": {
+            "default": false,
+            "title": "Save Run",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_predict_file_api_v1_predict_file_post",
+        "type": "object"
+      },
+      "Curve": {
+        "properties": {
+          "g": {
+            "items": {
+              "type": "number"
+            },
+            "title": "G",
+            "type": "array"
+          },
+          "t_min": {
+            "items": {
+              "type": "number"
+            },
+            "title": "T Min",
+            "type": "array"
+          }
+        },
+        "required": [
+          "t_min",
+          "g"
+        ],
+        "title": "Curve",
+        "type": "object"
+      },
+      "FlareInput": {
+        "properties": {
+          "flare_id": {
+            "title": "Flare Id",
+            "type": "string"
+          },
+          "flux": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Any positive scale",
+            "title": "Flux"
+          },
+          "star_id": {
+            "title": "Star Id",
+            "type": "integer"
+          },
+          "time": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Days, BTJD (omit only when fetching is enabled)",
+            "title": "Time"
+          },
+          "tpeak": {
+            "description": "Flare peak time, BTJD (Julian date - 2457000)",
+            "title": "Tpeak",
+            "type": "number"
+          }
+        },
+        "required": [
+          "flare_id",
+          "star_id",
+          "tpeak"
+        ],
+        "title": "FlareInput",
+        "type": "object"
+      },
+      "FlareResult": {
+        "properties": {
+          "calibrated_probability": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calibrated Probability"
+          },
+          "confidence_lower": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence Lower"
+          },
+          "confidence_upper": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence Upper"
+          },
+          "conformal_set": {
+            "anyOf": [
+              {
+                "enum": [
+                  "E",
+                  "C",
+                  "E+C",
+                  "none"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conformal Set"
+          },
+          "curve": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Curve"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "features": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Features"
+          },
+          "features_missing": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Features Missing"
+          },
+          "flare_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flare Id"
+          },
+          "out_of_range": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Out Of Range"
+          },
+          "predicted_label": {
+            "anyOf": [
+              {
+                "enum": [
+                  "eruptive",
+                  "confined"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Predicted Label"
+          },
+          "raw_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raw Score"
+          },
+          "reliability": {
+            "anyOf": [
+              {
+                "enum": [
+                  "confident",
+                  "uncertain"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reliability"
+          },
+          "star_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Star Id"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "too_few_points",
+              "no_peak",
+              "invalid_input"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "warnings": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "FlareResult",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HealthResponse": {
+        "properties": {
+          "model_version": {
+            "title": "Model Version",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "model_version"
+        ],
+        "title": "HealthResponse",
+        "type": "object"
+      },
+      "ModelInfo": {
+        "properties": {
+          "bundle_version": {
+            "title": "Bundle Version",
+            "type": "string"
+          },
+          "created": {
+            "title": "Created",
+            "type": "string"
+          },
+          "data_hash": {
+            "title": "Data Hash",
+            "type": "string"
+          },
+          "limitations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          },
+          "metrics": {
+            "additionalProperties": true,
+            "title": "Metrics",
+            "type": "object"
+          },
+          "training_summary": {
+            "additionalProperties": true,
+            "title": "Training Summary",
+            "type": "object"
+          }
+        },
+        "required": [
+          "bundle_version",
+          "created",
+          "data_hash",
+          "training_summary",
+          "metrics",
+          "limitations"
+        ],
+        "title": "ModelInfo",
+        "type": "object"
+      },
+      "PredictRequest": {
+        "properties": {
+          "flares": {
+            "items": {
+              "$ref": "#/components/schemas/FlareInput"
+            },
+            "title": "Flares",
+            "type": "array"
+          },
+          "run_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Name"
+          },
+          "save_run": {
+            "default": false,
+            "title": "Save Run",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "flares"
+        ],
+        "title": "PredictRequest",
+        "type": "object"
+      },
+      "RunListItem": {
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "model_version": {
+            "title": "Model Version",
+            "type": "string"
+          },
+          "n_confident": {
+            "title": "N Confident",
+            "type": "integer"
+          },
+          "n_eruptive": {
+            "title": "N Eruptive",
+            "type": "integer"
+          },
+          "n_flares": {
+            "title": "N Flares",
+            "type": "integer"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "created_at",
+          "model_version",
+          "n_flares",
+          "n_eruptive",
+          "n_confident"
+        ],
+        "title": "RunListItem",
+        "type": "object"
+      },
+      "RunResponse": {
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "model_version": {
+            "title": "Model Version",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/FlareResult"
+            },
+            "title": "Results",
+            "type": "array"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/RunSummary"
+          }
+        },
+        "required": [
+          "model_version",
+          "created_at",
+          "summary",
+          "results"
+        ],
+        "title": "RunResponse",
+        "type": "object"
+      },
+      "RunSummary": {
+        "properties": {
+          "n_confident": {
+            "title": "N Confident",
+            "type": "integer"
+          },
+          "n_confined": {
+            "title": "N Confined",
+            "type": "integer"
+          },
+          "n_eruptive": {
+            "title": "N Eruptive",
+            "type": "integer"
+          },
+          "n_flares": {
+            "title": "N Flares",
+            "type": "integer"
+          },
+          "n_ok": {
+            "title": "N Ok",
+            "type": "integer"
+          },
+          "n_uncertain": {
+            "title": "N Uncertain",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "n_flares",
+          "n_ok",
+          "n_eruptive",
+          "n_confined",
+          "n_confident",
+          "n_uncertain"
+        ],
+        "title": "RunSummary",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "Component 2: CME occurrence prediction",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "description": "Light check; does not run the model.",
+        "operationId": "health_api_v1_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health"
+      }
+    },
+    "/api/v1/model-info": {
+      "get": {
+        "operationId": "model_info_api_v1_model_info_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Model Info"
+      }
+    },
+    "/api/v1/predict": {
+      "post": {
+        "operationId": "predict_api_v1_predict_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PredictRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Predict"
+      }
+    },
+    "/api/v1/predict/file": {
+      "post": {
+        "operationId": "predict_file_api_v1_predict_file_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_predict_file_api_v1_predict_file_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Predict File"
+      }
+    },
+    "/api/v1/runs": {
+      "get": {
+        "operationId": "list_runs_api_v1_runs_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RunListItem"
+                  },
+                  "title": "Response List Runs Api V1 Runs Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Runs"
+      }
+    },
+    "/api/v1/runs/{run_id}": {
+      "delete": {
+        "operationId": "delete_run_api_v1_runs__run_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Run"
+      },
+      "get": {
+        "operationId": "get_run_api_v1_runs__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Run"
+      }
+    },
+    "/api/v1/runs/{run_id}/export": {
+      "get": {
+        "operationId": "export_api_v1_runs__run_id__export_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "default": "handoff_csv",
+              "pattern": "^(handoff_csv|full_csv|json)$",
+              "title": "Format",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export"
+      }
+    },
+    "/api/v1/samples": {
+      "get": {
+        "description": "The 33 TESS sample flares in the request format of POST /predict.",
+        "operationId": "samples_api_v1_samples_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FlareInput"
+                  },
+                  "title": "Response Samples Api V1 Samples Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Samples"
+      }
+    }
+  }
+}
