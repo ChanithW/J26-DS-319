@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 from .conformal import q_weighted, set_label
-from .features import FEATS13, shape_feats
+from .features import FEATS13, plot_curve, shape_feats
 from .model import to_scaled
 from .windowing import stellar_window
 
@@ -84,16 +84,19 @@ def _empty_row(rec: dict, status: str) -> dict:
     return row
 
 
-def predict_records(bundle: dict, records: Iterable[dict[str, Any]]) -> pd.DataFrame:
+def predict_records(bundle: dict, records: Iterable[dict[str, Any]], details: bool = False) -> pd.DataFrame:
     """Predict from raw light curves. One bad flare never fails the batch.
 
     Each record needs flare_id, star_id, tpeak, time (days, BTJD) and flux.
+    With ``details=True`` two extra columns are added: ``features`` (the 13 features,
+    None if missing) and ``curve`` (normalised curve for plotting).
     """
     cfg = bundle["config"]
     lo, hi = cfg["window_min"]
     rows: list[dict | None] = []
     feat_rows: list[dict] = []
     feat_pos: list[int] = []
+    extras: dict[int, dict] = {}
     for rec in records:
         try:
             time, flux = np.asarray(rec["time"], float), np.asarray(rec["flux"], float)
@@ -114,6 +117,9 @@ def predict_records(bundle: dict, records: Iterable[dict[str, Any]]) -> pd.DataF
         if feats is None:
             rows.append(_empty_row(rec, "no_peak"))
             continue
+        extras[len(rows)] = {
+            "features": {c: (None if not np.isfinite(feats[c]) else float(feats[c])) for c in FEATS13},
+            "curve": plot_curve(tm, f)}
         feat_pos.append(len(rows))
         rows.append(None)
         feat_rows.append({"flare_id": rec["flare_id"], "star_id": rec["star_id"], **feats})
@@ -121,4 +127,8 @@ def predict_records(bundle: dict, records: Iterable[dict[str, Any]]) -> pd.DataF
         scored = predict_features(bundle, pd.DataFrame(feat_rows))
         for pos, (_, r) in zip(feat_pos, scored.iterrows()):
             rows[pos] = r.to_dict()
-    return pd.DataFrame(rows, columns=OUTPUT_COLUMNS)
+    out = pd.DataFrame(rows, columns=OUTPUT_COLUMNS)
+    if details:
+        out["features"] = [extras.get(i, {}).get("features") for i in range(len(rows))]
+        out["curve"] = [extras.get(i, {}).get("curve") for i in range(len(rows))]
+    return out

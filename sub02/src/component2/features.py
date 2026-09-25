@@ -91,3 +91,23 @@ def prep(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
         if c in TIMEF:
             X[c] = np.log1p(X[c].clip(lower=0))
     return X
+
+
+def plot_curve(tm: np.ndarray, f: np.ndarray) -> dict | None:
+    """Normalised curve for plotting: (flux - background) / amplitude, peak = 1.
+
+    Uses the same background and peak rule as ``shape_feats``; None if unusable.
+    """
+    tm = np.asarray(tm, float)
+    f = np.asarray(f, float)
+    bgm = tm < -8
+    near = np.where(np.abs(tm) <= 6)[0]
+    if len(tm) == 0 or bgm.sum() < 3 or len(near) == 0:
+        return None
+    bg = np.median(f[bgm])
+    ip = near[np.argmax(f[near])]
+    amp = f[ip] - bg
+    if amp <= 0 or bg <= 0:
+        return None
+    g = (f - bg) / amp
+    return {"t_min": [round(float(x), 3) for x in tm], "g": [round(float(x), 5) for x in g]}

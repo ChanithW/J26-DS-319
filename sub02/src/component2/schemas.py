@@ -10,12 +10,19 @@ class FlareInput(BaseModel):
     flare_id: str
     star_id: int
     tpeak: float = Field(description="Flare peak time, BTJD (Julian date - 2457000)")
-    time: list[float] = Field(description="Days, BTJD")
-    flux: list[float] = Field(description="Any positive scale")
+    time: Optional[list[float]] = Field(default=None, description="Days, BTJD (omit only when fetching is enabled)")
+    flux: Optional[list[float]] = Field(default=None, description="Any positive scale")
 
 
 class PredictRequest(BaseModel):
     flares: list[FlareInput]
+    save_run: bool = False
+    run_name: Optional[str] = None
+
+
+class Curve(BaseModel):
+    t_min: list[float]
+    g: list[float]
 
 
 class FlareResult(BaseModel):
@@ -32,3 +39,47 @@ class FlareResult(BaseModel):
     warnings: list[str] = []
     raw_score: Optional[float] = None
     conformal_set: Optional[Literal["E", "C", "E+C", "none"]] = None
+    features: Optional[dict[str, Optional[float]]] = None
+    curve: Optional[Curve] = None
+
+
+class RunSummary(BaseModel):
+    n_flares: int
+    n_ok: int
+    n_eruptive: int
+    n_confined: int
+    n_confident: int
+    n_uncertain: int
+
+
+class RunResponse(BaseModel):
+    run_id: Optional[str] = None
+    name: Optional[str] = None
+    model_version: str
+    created_at: str
+    summary: RunSummary
+    results: list[FlareResult]
+
+
+class RunListItem(BaseModel):
+    run_id: str
+    name: Optional[str] = None
+    created_at: str
+    model_version: str
+    n_flares: int
+    n_eruptive: int
+    n_confident: int
+
+
+class HealthResponse(BaseModel):
+    status: str
+    model_version: str
+
+
+class ModelInfo(BaseModel):
+    bundle_version: str
+    created: str
+    data_hash: str
+    training_summary: dict
+    metrics: dict
+    limitations: list[str]

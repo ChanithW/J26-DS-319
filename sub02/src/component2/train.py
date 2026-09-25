@@ -144,6 +144,8 @@ def train_from_tables(solar: pd.DataFrame, stellar: pd.DataFrame, cfg: Config, d
                              "pandas": pd.__version__, "scipy": scipy.__version__,
                              "sklearn": sklearn.__version__, "xgboost": xgboost.__version__},
         "created": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "metrics": {**report, "created": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                    "base_rate": base, "bundle_version": BUNDLE_VERSION},
         "summary": {"n_solar": len(solar), "n_eruptive": int(y.sum()), "n_train": len(tr),
                     "n_cal": len(ca), "n_test": len(te), "n_bootstrap_models": len(boots),
                     "n_stellar_reference": len(stellar), "report": report, "limitations": LIMITATIONS},

@@ -5,6 +5,7 @@ import argparse
 import json
 import logging
 import sys
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -24,14 +25,13 @@ def _fmt_report(report: dict) -> str:
 
 def _train(args) -> int:
     from .train import build_solar_features, train_from_tables, _data_hash
-    from pathlib import Path
-
     cfg = load_config(args.config)
     data = Path(args.data)
     solar = build_solar_features(data, cfg)
     stellar = pd.read_csv(args.stellar) if getattr(args, "stellar", None) else load_tess_features(data)
     bundle, report = train_from_tables(solar, stellar, cfg, _data_hash(data))
     save_bundle(bundle, args.out)
+    Path(args.out).with_name("metrics.json").write_text(_fmt_report(bundle["metrics"]), encoding="utf-8")
     print(_fmt_report(report))
     print(f"bundle written to {args.out}")
     return 0

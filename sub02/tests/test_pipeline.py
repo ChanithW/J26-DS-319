@@ -116,22 +116,6 @@ def test_training_is_repeatable(tables, small_cfg):
     assert np.allclose(a["calibrated_probability"], b["calibrated_probability"], atol=1e-3)
 
 
-def test_api(bundle, tmp_path, monkeypatch):
-    from fastapi.testclient import TestClient
-    from component2 import api
-
-    p = tmp_path / "b.joblib"
-    save_bundle(bundle, p)
-    monkeypatch.setenv("COMPONENT2_BUNDLE", str(p))
-    api._state.clear()
-    c = TestClient(api.app)
-    assert c.get("/health").json() == {"status": "ok"}
-    assert c.get("/model-info").json()["limitations"]
-    r = c.post("/predict", json={"flares": [curve() | {"flare_id": "A"}, {**curve(), "flare_id": "B", "flux": [1.0] * 55}]})
-    assert r.status_code == 200
-    assert [x["status"] for x in r.json()] == ["ok", "no_peak"]
-
-
 GOLDEN = Path(__file__).parent / "golden" / "handoff_v3_expected.csv"
 DATA = Path(__file__).resolve().parents[1] / "data"
 

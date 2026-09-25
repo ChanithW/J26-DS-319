@@ -18,6 +18,9 @@ dependencies = [
     "fastapi>=0.110",
     "uvicorn>=0.27",
     "PyYAML>=6.0",
+    "SQLAlchemy>=2.0",
+    "python-multipart>=0.0.9",
+    "pydantic-settings>=2.2",
 ]
 
 [project.optional-dependencies]

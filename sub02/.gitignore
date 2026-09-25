@@ -9,3 +9,13 @@ venv/
 build/
 dist/
 .env
+runs.db
+*.db
+.env
+node_modules/
+frontend/dist/
+train_log.txt
+train_report.txt
+metrics.json
+test-results/
+playwright-report/
