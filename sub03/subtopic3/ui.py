@@ -1,9 +1,12 @@
 """
-Streamlit page for Sub-topic 3 (pipeline stage 2): flare frequency & energy.
+Streamlit page for Sub-topic 3: stellar flare frequency & energy prediction.
 
-Call ``render()`` from any Streamlit page. It reads Stage 1's result from
-st.session_state["pipeline"]["stage1"] and, on "Continue", writes the
-Sub-topic 3 result to st.session_state["pipeline"]["stage3"].
+Standalone: the user picks a star from the dataset by KIC (parameters are
+auto-filled) or enters stellar parameters manually, then gets the predicted
+flare rate and median flare energy with 80 % prediction intervals.
+
+Integration with the other sub-topics is NOT part of this page; see
+subtopic3/contracts.py and subtopic3/pipeline.py for the interface to use later.
 """
 from __future__ import annotations
 
@@ -14,13 +17,9 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import streamlit as st
 
-from .contracts import PIPELINE_KEY, STAGE1_KEY, STAGE3_KEY, STELLAR_PARAM_FIELDS
-from .pipeline import GatingError, check_gate, lookup_star, run_stage3
+from .contracts import STELLAR_PARAM_FIELDS
+from .pipeline import load_catalog, lookup_star
 from .predictor import FlarePredictor, InputError
-
-# Page opened by the "Continue" button (path relative to the app's main script).
-# The integrated app should point this at Sub-topic 2's real CME page.
-DEFAULT_NEXT_PAGE = "pages/3_MOCK_CME_Prediction.py"
 
 # Labels/units for the parameter form: (label, help text)
 PARAM_LABELS = {
@@ -42,16 +41,14 @@ BIAS_EXPLANATION = (
     "**observational artefact, not a physical result** - interpret with caution."
 )
 
+MODE_DATASET = "Find a star by KIC (auto-fill from dataset)"
+MODE_MANUAL = "Enter stellar parameters manually"
+
 
 @st.cache_resource(show_spinner="Loading flare model ...")
 def get_predictor() -> FlarePredictor:
     """Load the pickle once per server process."""
     return FlarePredictor()
-
-
-def get_pipeline() -> dict:
-    """The shared pipeline-state dict (created if missing)."""
-    return st.session_state.setdefault(PIPELINE_KEY, {})
 
 
 # ---------------------------------------------------------------- helpers
@@ -81,26 +78,29 @@ def _interval_plot(result: dict):
     return fig
 
 
-def _show_stage1_context(stage1: dict) -> None:
-    with st.expander("Received from Stage 1 (flare detection)", expanded=False):
-        st.json(stage1)
+def _choose_star() -> tuple[int | None, dict, str]:
+    """Star selection. Returns (KIC or None, default parameters, widget-key suffix)."""
+    mode = st.radio("Star", [MODE_DATASET, MODE_MANUAL], horizontal=True)
+    if mode == MODE_MANUAL:
+        st.info("Teff and log g are required; leave the other fields blank if unknown.")
+        return None, {}, "manual"
+
+    catalog = load_catalog()
+    kics = sorted(int(k) for k in catalog.index)
+    types = catalog["spectral_type"].to_dict()
+    kic = st.selectbox(
+        "KIC (type to search)", kics, index=None, placeholder="Choose or type a KIC ...",
+        format_func=lambda k: f"KIC {k}  ({types[k]}-type)",
+    )
+    if kic is None:
+        return None, {}, "none"
+    st.success(f"KIC {kic} found in the dataset - parameters auto-filled (you can edit them).")
+    return int(kic), lookup_star(int(kic)) or {}, str(kic)
 
 
-def _parameter_form(stage1: dict) -> dict | None:
+def _parameter_form(defaults: dict, key_suffix: str) -> dict | None:
     """Pre-filled parameter form. Returns submitted params, or None if not submitted."""
-    kic = stage1.get("KIC")
-    from_dataset = lookup_star(kic)
-    if from_dataset is not None:
-        defaults = from_dataset
-        st.success(f"KIC {kic} found in the dataset - parameters auto-filled (you can edit them).")
-    else:
-        defaults = dict(stage1.get("stellar_params") or {})
-        if kic is not None:
-            st.info(f"KIC {kic} is not in the dataset - please enter / check the parameters.")
-        else:
-            st.info("No KIC provided - please enter the stellar parameters manually.")
-
-    with st.form("s3_params"):
+    with st.form(f"s3_params_{key_suffix}"):
         cols = st.columns(2)
         values = {}
         for i, name in enumerate(STELLAR_PARAM_FIELDS):
@@ -108,14 +108,14 @@ def _parameter_form(stage1: dict) -> dict | None:
             default = defaults.get(name)
             values[name] = cols[i % 2].number_input(
                 label, value=None if _is_missing(default) else float(default),
-                help=help_text, format="%.4f" if name not in ("Teff",) else "%.0f",
-                key=f"s3_{name}_{kic}",  # new KIC -> fresh widgets with new defaults
+                help=help_text, format="%.0f" if name == "Teff" else "%.4f",
+                key=f"s3_{name}_{key_suffix}",  # new star -> fresh widgets with new defaults
             )
         submitted = st.form_submit_button("Predict flare frequency & energy", type="primary")
     return values if submitted else None
 
 
-def _show_result(result: dict, warnings: list[str]) -> None:
+def _show_result(result: dict, warnings: list[str], observed: dict | None) -> None:
     level = int(round(result.get("interval_level", 0.8) * 100))
     st.subheader(f"Predictions (point estimate with {level} % interval)")
     c1, c2, c3 = st.columns(3)
@@ -132,7 +132,10 @@ def _show_result(result: dict, warnings: list[str]) -> None:
         "Point": [result["pred_flare_rate"], 365.25 * result["pred_flare_rate"], result["pred_logE"]],
         "Upper": [result["pred_flare_rate_upper"], 365.25 * result["pred_flare_rate_upper"], result["pred_logE_upper"]],
     })
-    st.dataframe(table.style.format({"Lower": "{:.4g}", "Point": "{:.4g}", "Upper": "{:.4g}"}),
+    if observed:  # dataset star: show the catalogue values next to the prediction
+        table["Observed (Kepler)"] = [observed["flares_per_day"], 365.25 * observed["flares_per_day"],
+                                      observed["median_logE"]]
+    st.dataframe(table.style.format({c: "{:.4g}" for c in table.columns if c != "Quantity"}),
                  hide_index=True, width="stretch")
     st.pyplot(_interval_plot(result), clear_figure=True)
 
@@ -143,30 +146,32 @@ def _show_result(result: dict, warnings: list[str]) -> None:
     for w in warnings:
         st.caption(f"Note: {w}")
 
-    with st.expander("Output passed to the next stages (contract fields)"):
+    with st.expander("Output record (JSON)"):
         st.code(json.dumps(result, indent=2), language="json")
+    st.download_button("Download result (JSON)", json.dumps(result, indent=2),
+                       file_name=f"subtopic3_{result['KIC'] or 'manual'}.json", mime="application/json")
 
 
-def _single_star_tab(stage1: dict, next_page: str) -> None:
-    pipeline = get_pipeline()
-    params = _parameter_form(stage1)
+def _single_star_tab() -> None:
+    kic, defaults, key_suffix = _choose_star()
+    if key_suffix == "none":
+        return
+    params = _parameter_form(defaults, key_suffix)
     if params is not None:
         try:
-            result, warnings = run_stage3(stage1, get_predictor(), params=params)
-            st.session_state["s3_pending"] = {"result": result, "warnings": warnings}
+            result, warnings = get_predictor().predict_one(params, kic=kic)
+            st.session_state["s3_result"] = {"key": key_suffix, "result": result, "warnings": warnings}
         except InputError as exc:
-            st.session_state.pop("s3_pending", None)
+            st.session_state.pop("s3_result", None)
             st.error(f"Cannot predict: {exc}")
 
-    pending = st.session_state.get("s3_pending")
-    if not pending:
-        return
-    _show_result(pending["result"], pending["warnings"])
-
-    st.divider()
-    if st.button("Continue to CME prediction  ->", type="primary"):
-        pipeline[STAGE3_KEY] = pending["result"]  # hand-off to Sub-topics 2 and 4
-        st.switch_page(next_page)
+    saved = st.session_state.get("s3_result")
+    if saved and saved["key"] == key_suffix:  # only show the result for the selected star
+        observed = None
+        if kic is not None:
+            row = load_catalog().loc[kic]
+            observed = {"flares_per_day": float(row["flares_per_day"]), "median_logE": float(row["median_logE"])}
+        _show_result(saved["result"], saved["warnings"], observed)
 
 
 def _batch_tab() -> None:
@@ -197,32 +202,14 @@ def _batch_tab() -> None:
 
 
 # ------------------------------------------------------------------ entry
-def render(next_page: str = DEFAULT_NEXT_PAGE) -> None:
-    st.title("Stage 2 - Flare frequency & energy (Sub-topic 3)")
+def render() -> None:
+    st.title("Stellar flare frequency & energy prediction")
     st.caption(
-        "Predicts how often this star flares and how energetic its typical flare is, "
-        "with an 80 % conformal prediction interval. Covers F, G, K and M dwarfs."
+        "Sub-topic 3 - predicts how often a star flares and how energetic its typical "
+        "flare is, with an 80 % conformal prediction interval. Covers F, G, K and M dwarfs."
     )
-    stage1 = get_pipeline().get(STAGE1_KEY)
-
-    # ---- gating: never predict unless Stage 1 confirmed a flare
-    try:
-        check_gate(stage1)
-    except GatingError as exc:
-        st.error(str(exc))
-        if stage1:
-            _show_stage1_context(stage1)
-        st.stop()
-
-    _show_stage1_context(stage1)
-    single, batch = st.tabs(["This star", "Batch CSV"])
+    single, batch = st.tabs(["Single star", "Batch CSV"])
     with single:
-        _single_star_tab(stage1, next_page)
+        _single_star_tab()
     with batch:
         _batch_tab()
-
-
-def reset_stage3_state() -> None:
-    """Clear Sub-topic 3 results; call this whenever Stage 1's result changes."""
-    get_pipeline().pop(STAGE3_KEY, None)
-    st.session_state.pop("s3_pending", None)
