@@ -86,7 +86,7 @@ def export_run(run: dict, fmt: str) -> tuple[str, str, str]:
     else:
         df["warnings"] = df["warnings"].map(lambda w: ";".join(w) if isinstance(w, list) else "")
     buf = io.StringIO()
-    df.to_csv(buf, index=False)
+    df.to_csv(buf, index=False, lineterminator="\n")        # same bytes on every platform
     return buf.getvalue(), "text/csv", f"{stem}_{fmt}.csv"
 
 

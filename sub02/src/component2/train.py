@@ -27,7 +27,7 @@ from .conformal import WeightsModel, nonconformity, q_plain, q_weighted
 from .data_io import (load_solar_labels, load_solar_raw, load_tess_features, solar_raw_path,
                       warn_unlabelled_solar_files)
 from .evaluate import binary_metrics, conformal_report
-from .features import FEATS13, shape_feats
+from .features import FEATS13, prep, shape_feats
 from .model import make_model, pooled_stats, to_scaled
 from .windowing import cut_window, to_2min
 
@@ -90,7 +90,7 @@ def _bootstrap(tr_idx, y, groups, X, cfg: Config) -> list:
         idx = np.concatenate([by_ar[a] for a in pick])
         if len(np.unique(y[idx])) < 2:
             continue
-        models.append(make_model(y[idx], seed=b).fit(X[idx], y[idx]))
+        models.append(make_model(y[idx], seed=0).fit(X[idx], y[idx]))   # notebook: seed 0 for every model
     return models
 
 
@@ -155,9 +155,11 @@ def train_from_tables(solar: pd.DataFrame, stellar: pd.DataFrame, cfg: Config, d
 
 def _report(solar, As, y, groups, te, ca, tr, model, p_te, platt, base, conformal, cfg, Lt, wm, w_ca) -> dict:
     """Acceptance-check numbers (section 9 of the brief)."""
+    Xr = prep(solar, FEATS13)
+    Xr = Xr.fillna(Xr.median()).values                   # notebook CV: plain solar features, solar-only median
     cv_pred = np.zeros(len(y))
-    for a, b in StratifiedGroupKFold(5, shuffle=True, random_state=0).split(As, y, groups):
-        cv_pred[b] = make_model(y[a], seed=0).fit(As[a], y[a]).predict_proba(As[b])[:, 1]
+    for a, b in StratifiedGroupKFold(5, shuffle=True, random_state=0).split(Xr, y, groups):
+        cv_pred[b] = make_model(y[a], seed=0).fit(Xr[a], y[a]).predict_proba(Xr[b])[:, 1]
     cv = binary_metrics(y, (cv_pred > 0.5).astype(int), cv_pred)
     test = binary_metrics(y[te], (p_te > 0.5).astype(int), p_te)
 

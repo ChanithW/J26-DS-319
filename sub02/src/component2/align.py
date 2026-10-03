@@ -10,7 +10,7 @@ import numpy as np
 
 def _sqrtm(C: np.ndarray, inv: bool = False) -> np.ndarray:
     w, V = np.linalg.eigh(C)
-    w = np.clip(w, 1e-12, None)
+    w = np.clip(w, 1e-9, None)
     p = -0.5 if inv else 0.5
     return (V * w ** p) @ V.T
 
@@ -21,8 +21,8 @@ def fit_alignment(Ls: np.ndarray, Lt: np.ndarray, method: str = "diag") -> dict:
         return {"method": "none"}
     mu_t = Lt.mean(0)
     if method == "diag":
-        return {"method": "diag", "mu_s": Ls.mean(0), "sd_s": Ls.std(0, ddof=1),
-                "mu_t": mu_t, "sd_t": Lt.std(0, ddof=1) + 1e-6}
+        return {"method": "diag", "mu_s": Ls.mean(0), "sd_s": Ls.std(0),
+                "mu_t": mu_t, "sd_t": Lt.std(0) + 1e-6}
     if method == "coral":
         d = Ls.shape[1]
         Cs = np.cov(Ls, rowvar=False) + np.eye(d)

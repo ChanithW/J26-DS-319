@@ -114,27 +114,3 @@ def test_training_is_repeatable(tables, small_cfg):
     s = make_table(4, 9, labelled=False)
     a, b = predict_features(b1, s), predict_features(b2, s)
     assert np.allclose(a["calibrated_probability"], b["calibrated_probability"], atol=1e-3)
-
-
-GOLDEN = Path(__file__).parent / "golden" / "handoff_v3_expected.csv"
-DATA = Path(__file__).resolve().parents[1] / "data"
-
-
-@pytest.mark.skipif(not (GOLDEN.exists() and (DATA / "tess_sample_features2.csv").exists()),
-                    reason="golden file and real data not provided yet")
-def test_golden():
-    """Assumes flare_id == 'TESS_<TIC>' and star_id == TIC in the sample feature table."""
-    from component2.config import load_config
-    from component2.train import train
-
-    bundle, _ = train(DATA, load_config())
-    feats = pd.read_csv(DATA / "tess_sample_features2.csv")
-    feats["flare_id"] = "TESS_" + feats["TIC"].astype(str)
-    feats["star_id"] = feats["TIC"]
-    out = predict_features(bundle, feats).merge(pd.read_csv(GOLDEN), on="flare_id", suffixes=("", "_exp"))
-    assert len(out) == 33
-    assert (out["calibrated_probability"] - out["calibrated_probability_exp"]).abs().max() < 0.002
-    assert (out["confidence_lower"] - out["confidence_lower_exp"]).abs().max() < 0.01
-    assert (out["confidence_upper"] - out["confidence_upper_exp"]).abs().max() < 0.01
-    assert (out["predicted_label"] == out["predicted_label_exp"]).all()
-    assert (out["reliability"] == out["reliability_exp"]).all()

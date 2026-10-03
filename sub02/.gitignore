@@ -19,3 +19,7 @@ train_report.txt
 metrics.json
 test-results/
 playwright-report/
+*.log
+frontend/test-results/
+frontend/playwright-report/
+frontend/dist/

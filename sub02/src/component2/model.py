@@ -19,7 +19,8 @@ def make_model(y, seed: int = 0) -> XGBClassifier:
 def pooled_stats(solar: pd.DataFrame, stellar: pd.DataFrame, cols: list[str]):
     """Pooled median and std over solar + stellar flares (after the log step)."""
     P = pd.concat([prep(solar, cols), prep(stellar, cols)], ignore_index=True)
-    return P.median(), P.std()
+    med = P.median()
+    return med, P.fillna(med).std()                      # notebook: std of the median-filled pooled data
 
 
 def to_scaled(df: pd.DataFrame, cols: list[str], med: pd.Series, sd0: pd.Series) -> np.ndarray:
