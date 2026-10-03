@@ -30,9 +30,8 @@ Stage 1  Sub-topic 1  flare / not flare ──► Stage 2  Sub-topic 3  (this fo
 | `contracts/stage_contract.json` | The same contract as JSON, for anyone not using Python |
 | `subtopic3/predictor.py` | Inference: input validation, preprocessing, prediction |
 | `subtopic3/pipeline.py` | Gating on `is_flare`, KIC lookup, Stage-1 → Stage-3 glue |
-| `subtopic3/ui.py` | Streamlit page for this stage (`render()`) |
-| `app/` | Standalone multipage Streamlit app (stages 1 → 4) |
-| `stubs/` | **MOCK** Stage 1, CME and habitability pages — testing only |
+| `subtopic3/ui.py` | Streamlit page for Sub-topic 3 (`render()`) |
+| `app/Home.py` | Standalone Streamlit app (Sub-topic 3 only) |
 | `scripts/batch_export.py` | Writes `outputs/subtopic3_predictions.csv` for Sub-topic 4 |
 | `scripts/evaluate.py` | Test-set metrics and plots, written to `outputs/` |
 | `tests/` | pytest suite |
@@ -54,20 +53,24 @@ All commands are run from `sub03/` with the venv activated.
 
 | Task | Command |
 |---|---|
-| Standalone app (mock stages + this page) | `streamlit run app/Home.py` |
+| Standalone app | `streamlit run app/Home.py` |
 | Static predictions for the whole dataset | `python scripts/batch_export.py` |
 | Evaluation (metrics + plots) | `python scripts/evaluate.py` |
 | Tests | `python -m pytest tests -q` |
 | Regenerate the JSON contract | `python -m subtopic3.contracts` |
 
-**Using the app:** Home → **MOCK Stage 1** (choose *Flare* / *Not a flare* and a star) → **Stage 2**
-(this page: parameters are auto-filled from the dataset when the KIC is known, then *Predict*) →
-**Continue to CME prediction** → the MOCK pages show exactly what was passed on.
-The *Batch CSV* tab predicts for an uploaded CSV and offers a download.
+**Using the app** (Sub-topic 3 only; the other sub-topics are integrated later):
 
-## 4. Stage interface contract
+* **Single star** tab: either choose a KIC from the dataset (parameters are auto-filled and the observed
+  Kepler values are shown next to the prediction), or enter the stellar parameters manually. Click
+  *Predict* to get the flare rate and median flare energy with 80 % intervals, an interval plot, the
+  bias-flag explanation for F stars, and a downloadable JSON result.
+* **Batch CSV** tab: upload a CSV of stars and download their predictions.
 
-Everything is held in `st.session_state["pipeline"]`, a dict with one key per stage. Field definitions
+## 4. Stage interface contract (for integration later)
+
+The standalone app does not use this yet. It is defined now so the four sub-topics can be joined later
+without renaming anything. In the integrated app, everything is held in `st.session_state["pipeline"]`, a dict with one key per stage. Field definitions
 live in `subtopic3/contracts.py` (Python) and `contracts/stage_contract.json`. **Field names are stable.
 Add new optional fields; do not rename existing ones.**
 
@@ -99,24 +102,18 @@ Guaranteed: `lower ≤ point ≤ upper` for both quantities, all values finite, 
 
 ### Gating
 
-If there is no Stage-1 result, it is malformed, or `is_flare` is not `True`, the page shows an error
-and stops. No prediction is made and the *Continue* button never appears
-(`subtopic3.pipeline.check_gate`). When a new Stage-1 result is saved, any old Sub-topic 3 output is
-cleared (`subtopic3.ui.reset_stage3_state()`).
+`subtopic3.pipeline.run_stage3(stage1, predictor)` refuses to predict (raises `GatingError`) if there is
+no Stage-1 result, it is malformed, or `is_flare` is not `True`. This is tested, and it is ready for the
+integrated app.
 
-## 5. Plugging in the real pages (other members)
+## 5. Integrating with the other sub-topics (later)
 
-The pages in `app/pages/` marked **MOCK** are thin wrappers around `stubs/`. To integrate:
-
-1. **Sub-topic 1:** after classifying, write a dict following the input contract to
-   `st.session_state["pipeline"]["stage1"]`, call `subtopic3.ui.reset_stage3_state()`, and then open the
-   Sub-topic 3 page. Replace `1_MOCK_Stage1_Flare_Detection.py` with your page.
-2. **Sub-topic 3 page in another app:** make `sub03/` importable and call
-   `subtopic3.ui.render(next_page="pages/<your CME page>.py")`.
-3. **Sub-topic 2 / 4:** read `st.session_state["pipeline"]["stage3"]` (and call
-   `validate_stage3_output` if you like). Replace `3_MOCK_CME_Prediction.py` / `4_MOCK_Habitability.py`.
-   Sub-topic 4 can instead use the static table `outputs/subtopic3_predictions.csv` (same columns).
-4. Without Streamlit: `FlarePredictor().predict_one(params, kic)` returns `(stage3_dict, warnings)`.
+* **Sub-topic 1 → 3:** Sub-topic 1 writes its result (input contract above) to
+  `st.session_state["pipeline"]["stage1"]`. Sub-topic 3 calls
+  `run_stage3(stage1, predictor)`, which applies the gate, auto-fills a known KIC and predicts.
+* **Sub-topic 3 → 2 / 4:** store the returned dict in `st.session_state["pipeline"]["stage3"]`.
+  Sub-topic 4 can also use the static table `outputs/subtopic3_predictions.csv` (same columns).
+* Without Streamlit: `FlarePredictor().predict_one(params, kic)` returns `(output_dict, warnings)`.
 
 ## 6. Model details
 
