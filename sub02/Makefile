@@ -13,6 +13,10 @@ dev-backend:
 dev-frontend:
 	cd frontend && npm run dev
 
+# Streamlit UI (talks to the API on COMPONENT2_API_URL, default http://localhost:8000)
+dev-ui:
+	python -m streamlit run streamlit_app/app.py
+
 # backend and frontend together (two processes)
 dev:
 	$(MAKE) -j2 dev-backend dev-frontend
