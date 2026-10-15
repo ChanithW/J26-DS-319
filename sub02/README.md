@@ -28,6 +28,30 @@ API: `COMPONENT2_BUNDLE=model_bundle_v3.joblib uvicorn component2.api:app` (`POS
 
 `flares.json` is a list (or `{"flares": [...]}`) of `{flare_id, star_id, tpeak, time, flux}`; `time` and `tpeak` in BTJD days.
 
+## Run it locally (backend + web app)
+Needs Python 3.11+, Node 20+, the data in `data/`, and a trained bundle.
+```bash
+pip install -e ".[dev]"
+python -m component2.cli train --data data/ --out model_bundle_v3.joblib   # once
+cp .env.example .env                                                        # optional settings
+python -m uvicorn component2.api:app --port 8000                            # API, docs at http://localhost:8000/docs
+cd frontend && npm install && cp .env.example .env && npm run dev          # web app at http://localhost:5173
+```
+`make setup`, `make train`, `make dev` (both servers) and `make test` do the same if you have `make`.
+After any API change run `make openapi` (rewrites `docs/openapi.json` and the frontend types); a test fails if the committed schema is stale.
+
+Frontend tests: `cd frontend && npm test` (Vitest + MSW). One end-to-end test (`npm run test:e2e`) drives the real backend in a browser; it uses the Microsoft Edge installed on Windows by default (`PW_CHANNEL=chromium` uses Playwright's own browser after `npx playwright install chromium`).
+
+## Streamlit UI
+A Streamlit front end (`streamlit_app/`) offers the same pages as the React app: Predict, Results (table plus flare detail), Saved runs and Model info. It talks only to the API, so start the API first.
+```bash
+pip install -e ".[ui]"
+python -m uvicorn component2.api:app --port 8000      # terminal 1
+python -m streamlit run streamlit_app/app.py          # terminal 2, opens http://localhost:8501
+```
+Set `COMPONENT2_API_URL` if the API is elsewhere. Tests: `python -m pytest tests/test_ui.py` (API mocked). Differences from the React app: no keyboard arrow-key navigation in the flare detail (use the selector and Previous/Next buttons), and the limitations banner is at the top of each page rather than pinned while scrolling.
+The two front ends are independent; keep one and delete the other folder (`frontend/` or `streamlit_app/`) if you don't need both.
+
 ## Why the label is not "probability above 0.5"
 Only about 35% of flares are eruptive, so calibrated probabilities are mostly below 0.5. `predicted_label` is `eruptive` when `calibrated_probability >= base` (about 0.263, the eruptive share of the calibration set). Set `label_rule: raw_0.5` in the config for the older rule.
 
@@ -38,7 +62,9 @@ Only about 35% of flares are eruptive, so calibrated probabilities are mostly be
 ```bash
 pytest
 ```
-Tests use synthetic data. The golden test (`tests/golden/handoff_v3_expected.csv` + real `data/`) is skipped until both exist.
+Most tests use synthetic data. Two golden tests compare with the notebook's 33-flare table (`tests/golden/`):
+- `test_golden_downstream_exact` runs frozen notebook-model scores (`frozen_scores_v3.json`) through the package's Platt, label and conformal code and must match exactly.
+- `test_golden_retrained_agrees` retrains on the real `data/` (skipped if absent) and checks looser agreement, because XGBoost output varies with library version and thread count (see MODEL_CARD).
 
 ## Open items
 Hand-off columns for Sub-topic 4 and input columns from Sub-topic 1 are unconfirmed (see `handoff.py`, `schemas.py`).
