@@ -110,6 +110,29 @@ def render_flags(result):
         st.caption("- " + flag)
 
 
+def render_limits_section():
+    """Draw the plain-English notes about what the score means and where it comes from."""
+    st.subheader("About and limits")
+    text = (
+        "- **What the score is:** a physics-based proxy for how much flare and CME energy reaches a planet. "
+        "It is not measured or simulated ozone loss.\n"
+        "- **Formula label:** R_eff = flare rate x CME probability x (reference distance / orbital distance) squared, "
+        "with a reference distance of {0} AU. High at or above {1}, Medium at or above {2}. "
+        "The cut-offs were chosen by the project, not measured.\n"
+        "- **ML label:** from a model trained on a dose label. The dose adds up every flare's energy weighted by its "
+        "chance of a CME, spread over the planet's distance, per month observed. Classes are thirds of the training "
+        "sample, so \"High\" means high among the planets in the sample.\n"
+        "- **Model:** XGBoost on five inputs. On 235 held-out planets (no star in both training and test) its macro F1 "
+        "is 0.85. The ML class and the formula label can differ; they use different methods.\n"
+        "- **CME probability:** a modelled estimate from flare energy (Shi 2025 flares), not an observation. It is only "
+        "used in the formula label. If left empty, the default from config (the Lu 2025 value) is used.\n"
+        "- **Training data:** 1,185 planets from 862 stars, from published flare catalogues. Values outside the training "
+        "range are flagged.\n"
+        "- **SHAP bars** show what moved the model's answer, not a physical cause."
+    ).format(config.D_REF, config.THRESH_HIGH, config.THRESH_MEDIUM)
+    st.markdown(text)
+
+
 def render_limits():
     """Draw the limits note at the bottom of the page."""
     st.markdown(
@@ -199,6 +222,7 @@ def main():
     with right:
         render_result()
 
+    render_limits_section()
     render_limits()
 
 
