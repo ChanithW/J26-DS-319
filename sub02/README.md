@@ -42,6 +42,9 @@ After any API change run `make openapi` (rewrites `docs/openapi.json` and the fr
 
 Frontend tests: `cd frontend && npm test` (Vitest + MSW). One end-to-end test (`npm run test:e2e`) drives the real backend in a browser; it uses the Microsoft Edge installed on Windows by default (`PW_CHANNEL=chromium` uses Playwright's own browser after `npx playwright install chromium`).
 
+## Entering flares
+Both web apps accept flares three ways: a long-format CSV, a manual form, or the 33 sample TESS flares. The manual form takes a flare id, the star (TIC) id, and pasted "time, flux" pairs (one per line, from a spreadsheet or typed). Time can be given as minutes from the flare peak (no peak time needed) or as TESS days (BTJD) with the peak time. Several flares can be added to a list and run together. The form warns if fewer than 20 points fall in the −20 to +90 minute window; such a flare is then returned as `too_few_points` rather than scored. The "demo flare" button fills in a synthetic example, only to try the form.
+
 ## Streamlit UI
 A Streamlit front end (`streamlit_app/`) offers the same pages as the React app: Predict, Results (table plus flare detail), Saved runs and Model info. It talks only to the API, so start the API first.
 ```bash
