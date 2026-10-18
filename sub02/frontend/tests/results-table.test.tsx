@@ -50,7 +50,7 @@ describe("ResultsTable", () => {
   it("greys out a not-scored row and shows the reason", () => {
     renderWithProviders(<ResultsTable results={results} />);
     const row = screen.getAllByTestId("result-row").find((r) => r.dataset.status === "too_few_points")!;
-    expect(row.className).toMatch(/opacity-70/);
+    expect(row.className).toMatch(/italic/);              // greyed with AA-contrast colours, not low opacity
     expect(row).toHaveTextContent("fewer than 20 data points");
   });
 

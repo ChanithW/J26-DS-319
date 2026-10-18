@@ -138,7 +138,7 @@ export function ResultsTable({ results }: { results: FlareResult[] }) {
                 const notOk = r.status !== "ok";
                 return (
                   <tr key={`${r.flare_id}-${i}`} data-testid="result-row" data-status={r.status}
-                    className={`cursor-pointer border-b border-slate-100 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800 ${notOk ? "bg-slate-100 text-slate-500 opacity-70 dark:bg-slate-800" : ""}`}
+                    className={`cursor-pointer border-b border-slate-100 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800 ${notOk ? "bg-slate-100 italic text-slate-600 dark:bg-slate-800 dark:text-slate-300" : ""}`}
                     onClick={() => setOpen(visible.indexOf(r))}>
                     <td className="td">{r.rank ?? "—"}</td>
                     <td className="td">

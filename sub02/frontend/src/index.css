@@ -26,7 +26,11 @@ body {
     @apply border-accent bg-accent text-white hover:bg-indigo-700 dark:border-accent-dark dark:bg-accent-dark dark:text-slate-950 dark:hover:bg-indigo-300;
   }
   .input {
-    @apply rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900;
+    @apply rounded-md border border-slate-300 bg-white px-3 py-2 text-sm placeholder:text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:placeholder:text-slate-400;
+  }
+  /* helper text: 10:1 (light) and 12:1 (dark), above the WCAG AA minimum of 4.5:1 */
+  .hint {
+    @apply text-xs text-slate-700 dark:text-slate-300;
   }
   .th {
     @apply whitespace-nowrap px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400;
