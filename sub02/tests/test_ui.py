@@ -168,3 +168,98 @@ def test_model_info_api_error(monkeypatch):
     at = app("model_info").run()
     assert any("boom" in e.value for e in at.error)
     banner_ok(at)
+
+
+# ----------------------------------------------------------------- manual entry
+def points(n=30, start=-20, step=2):
+    return "\n".join(f"{start + i * step}, {1 + i / 100:.3f}" for i in range(n))
+
+
+def test_parse_points_formats_header_and_errors():
+    t, f, e = helpers.parse_points("time,flux\n\n1,2\n3\t4\n5 6\n7;8\n")
+    assert (t, f, e) == ([1.0, 3.0, 5.0, 7.0], [2.0, 4.0, 6.0, 8.0], [])
+    _, _, errs = helpers.parse_points("1,2\nabc,4\n5,6,7")
+    assert errs[0].startswith("Line 2:") and errs[1].startswith("Line 3:")
+    assert helpers.parse_points("-20, 1.5e-3\n0, 2E2")[1] == [0.0015, 200.0]
+
+
+def test_build_flare_converts_minutes_and_validates():
+    flare, errors, warnings = helpers.build_flare("F1", "123", "minutes", "", points())
+    assert errors == [] and warnings == []
+    assert flare["tpeak"] == 0.0 and flare["star_id"] == 123 and abs(flare["time"][0] - (-20 / 1440)) < 1e-12
+    assert helpers.build_flare(" ", "12.5", "minutes", "", points())[1] == [
+        "Enter a flare id.", "Star id must be a whole number (the TIC number)."]
+    assert "already in the list" in helpers.build_flare("F1", "1", "minutes", "", points(), ["F1"])[1][0]
+    assert "peak time in BTJD" in helpers.build_flare("F1", "1", "btjd", "", points())[1][0]
+    assert helpers.build_flare("F1", "1", "btjd", "1500.5", points(30, 1499.9, 0.0014))[0]["tpeak"] == 1500.5
+    assert "at least two" in helpers.build_flare("F1", "1", "minutes", "", "1,2")[1][0]
+
+
+def test_build_flare_warns_about_few_points_but_allows_them():
+    flare, errors, warnings = helpers.build_flare("F1", "1", "minutes", "", points(10))
+    assert flare is not None and errors == [] and "Only 10 point" in warnings[0]
+
+
+def test_demo_flare_is_valid():
+    flare, errors, warnings = helpers.build_flare("D", "1", "minutes", "", helpers.example_points())
+    assert errors == [] and warnings == [] and len(flare["time"]) == 55
+
+
+def fill_and_add(at, flare_id="MANUAL_1"):
+    at.radio[0].set_value("Enter flares manually").run()
+    at.text_input(key="m_id").set_value(flare_id)
+    at.text_input(key="m_star").set_value("777")
+    at.text_area(key="m_points").set_value(points())
+    next(b for b in at.button if b.label == "Add this flare").click().run()
+    return at
+
+
+def test_manual_form_adds_flare_to_list_and_runs_it(monkeypatch):
+    sent = {}
+
+    def fake_predict(flares, save_run, name):
+        sent.update(flares=flares, save_run=save_run, name=name)
+        return make_run([flare()])
+
+    monkeypatch.setattr(api_client, "predict", fake_predict)
+    at = fill_and_add(app("predict").run())
+    assert not at.exception
+    assert any("MANUAL_1" in m.value and "30 points" in m.value for m in at.markdown)
+    assert any("Added" in s.value for s in at.success)
+    next(b for b in at.button if b.label == "Run prediction").click().run()
+    assert sent["flares"][0]["flare_id"] == "MANUAL_1" and sent["flares"][0]["star_id"] == 777
+    assert sent["flares"][0]["tpeak"] == 0.0 and sent["save_run"] is True
+
+
+def test_manual_form_shows_errors_and_adds_nothing():
+    at = app("predict").run()
+    at.radio[0].set_value("Enter flares manually").run()
+    next(b for b in at.button if b.label == "Add this flare").click().run()
+    assert any("Enter a flare id." in e.value for e in at.error)
+    assert not at.session_state["manual_flares"]
+    assert next(b for b in at.button if b.label == "Run prediction").disabled
+
+
+def test_manual_form_demo_button_fills_the_form():
+    at = app("predict").run()
+    at.radio[0].set_value("Enter flares manually").run()
+    next(b for b in at.button if b.label == "Fill with a demo flare").click().run()
+    assert at.text_input(key="m_id").value == "EXAMPLE_FLARE"
+    assert helpers.parse_points(at.text_area(key="m_points").value)[2] == []
+
+
+def test_streamlit_form_hints_and_spacing_warning():
+    at = app("predict").run()
+    at.radio[0].set_value("Enter flares manually").run()
+    captions = " ".join(c.value for c in at.caption)
+    assert "Time 0 must be the flare's brightest point (within about 6 minutes)." in captions
+    assert "Include at least 3 points before -8 minutes (they set the background)." in captions
+    slow = helpers.build_flare("F1", "1", "minutes", "", points(30, -20, 10))
+    assert slow[0] is not None and "about 10.0 minutes" in " ".join(slow[2]) and "does not re-bin" in " ".join(slow[2])
+    assert "about 30 seconds" in " ".join(helpers.build_flare("F1", "1", "minutes", "", points(60, -20, 0.5))[2])
+    assert helpers.build_flare("F1", "1", "minutes", "", points(30, -20, 2))[2] == []
+
+
+def test_streamlit_parse_points_tab_separated_spreadsheet():
+    t, f, e = helpers.parse_points("-20\t1.0\n-18\t1.1\n-16 1.2\n-14,1.3")
+    assert e == [] and t == [-20.0, -18.0, -16.0, -14.0]

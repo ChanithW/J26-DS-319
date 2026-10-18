@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import io
+import math
+import re
 
 import pandas as pd
 
@@ -131,3 +133,93 @@ def fmt_num(v, digits: int = 3) -> str:
 
 def fmt_pct(v) -> str:
     return f"{v * 100:.1f}%" if isinstance(v, (int, float)) and v == v else "—"
+
+
+# ----------------------------------------------------------------- manual entry
+_NUM = re.compile(r"^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$")
+
+
+def parse_points(text: str):
+    """Parse pasted "time flux" lines (comma, tab, space or semicolon separated). A text header row is skipped.
+
+    Returns (time, flux, errors).
+    """
+    time, flux, errors = [], [], []
+    seen_data = False
+    for i, raw in enumerate(text.splitlines()):
+        line = raw.strip()
+        if not line:
+            continue
+        parts = [p for p in re.split(r"[\s,;]+", line) if p]
+        numeric = all(_NUM.match(p) for p in parts)
+        if not numeric and not seen_data and len(parts) >= 2 and not any(_NUM.match(p) for p in parts):
+            continue                                              # header row
+        if len(parts) != 2 or not numeric:
+            if len(errors) < 5:
+                errors.append(f'Line {i + 1}: expected two numbers (time and flux), found "{line[:40]}".')
+            continue
+        seen_data = True
+        time.append(float(parts[0]))
+        flux.append(float(parts[1]))
+    return time, flux, errors
+
+
+def build_flare(flare_id: str, star_id: str, unit: str, tpeak: str, points: str, existing_ids=()):
+    """Check the manual-entry fields. Returns (flare_or_None, errors, warnings).
+
+    ``unit`` is "minutes" (time = minutes from the peak, stored as days with tpeak 0) or "btjd".
+    """
+    errors, warnings = [], []
+    flare_id = (flare_id or "").strip()
+    if not flare_id:
+        errors.append("Enter a flare id.")
+    elif flare_id in existing_ids:
+        errors.append(f'A flare called "{flare_id}" is already in the list. Use a different id.')
+    if not re.fullmatch(r"\d+", (star_id or "").strip()):
+        errors.append("Star id must be a whole number (the TIC number).")
+    peak = 0.0
+    if unit == "btjd":
+        if not _NUM.match((tpeak or "").strip()):
+            errors.append("Enter the flare peak time in BTJD (Julian date − 2457000).")
+        else:
+            peak = float(tpeak.strip())
+    time, flux, perrors = parse_points(points or "")
+    errors.extend(perrors)
+    if not perrors and len(time) < 2:
+        errors.append("Enter at least two data points (time and flux).")
+    if errors:
+        return None, errors, warnings
+    days = [m / 1440 for m in time] if unit == "minutes" else time
+    inside = sum(1 for d in days if -20 <= (d - peak) * 1440 <= 90)
+    if inside < 20:
+        warnings.append(f"Only {inside} point(s) fall between −20 and +90 minutes from the peak. At least 20 are needed, "
+                        "otherwise the flare will not be scored.")
+    if any(v <= 0 for v in flux):
+        warnings.append("Some flux values are zero or negative. Flux should be on a positive scale.")
+    spacing = median_spacing_minutes(days)
+    if spacing is not None and not 1.5 <= spacing <= 2.5:
+        shown = f"{spacing * 60:.0f} seconds" if spacing < 1 else f"{spacing:.1f} minutes"
+        warnings.append(f"The spacing between your points is about {shown}. The model expects 2-minute data and does "
+                        "not re-bin, so the result may not be reliable.")
+    flare = {"flare_id": flare_id, "star_id": int(star_id.strip()), "tpeak": peak, "time": days, "flux": flux}
+    return flare, errors, warnings
+
+
+def median_spacing_minutes(days):
+    """Median gap between consecutive points, in minutes (times in days); None if it cannot be worked out."""
+    s = sorted(days)
+    gaps = sorted(g for g in ((b - a) * 1440 for a, b in zip(s, s[1:])) if g > 1e-9)
+    if not gaps:
+        return None
+    mid = len(gaps) // 2
+    return gaps[mid] if len(gaps) % 2 else (gaps[mid - 1] + gaps[mid]) / 2
+
+
+def example_points() -> str:
+    """A synthetic demo flare (fast rise, exponential decay), only to try the form. Not real data."""
+    lines = []
+    for t in range(-20, 90, 2):
+        f = 1.0 if t < -4 else 1 + 0.5 * (t + 4) / 4 if t < 0 else 1 + 0.5 * math.exp(-t / 12)
+        lines.append(f"{t}, {f:.4f}")
+    return "\n".join(lines)
+
