@@ -160,11 +160,6 @@ def render_future_controls():
     with load_col:
         st.button("Load star", key="future_load", disabled=True)
 
-    upload_columns = st.columns(3)
-    for number, column in enumerate(upload_columns, start=1):
-        with column:
-            st.file_uploader("Sub-topic {0} file".format(number), key="future_file_{0}".format(number), disabled=True)
-
     st.caption("Star ID lookup and teammates' outputs are coming soon. For now, enter the values by hand.")
     st.divider()
 
