@@ -147,20 +147,21 @@ def render_future_controls():
     """Draw the disabled controls for the features that come later."""
     st.radio(
         "Input source",
-        ["Manual", "Catalogue (soon)", "Teammates' outputs (soon)"],
+        ["Manual", "Catalogue", "Teammates' outputs"],
         index=0,
         key="future_source",
         horizontal=True,
         disabled=True,
     )
 
+    st.markdown("**Star ID lookup**")
+
     id_col, load_col = st.columns([2, 1])
     with id_col:
-        st.text_input("Star ID (TIC or KIC)", placeholder="coming soon", key="future_star_id", disabled=True)
+        st.text_input("Star ID (TIC or KIC)", key="future_star_id", disabled=True)
     with load_col:
         st.button("Load star", key="future_load", disabled=True)
 
-    st.caption("Star ID lookup and teammates' outputs are coming soon. For now, enter the values by hand.")
     st.divider()
 
 
@@ -209,7 +210,6 @@ def main():
     st.set_page_config(page_title="Habitability Risk Scoring", layout="wide")
     st.title("Habitability Risk Scoring")
     st.caption("Sub-topic 4 | AI-Driven Stellar Flare Analysis and Exoplanetary Habitability Impact Assessment")
-    st.warning(config.LIMITS_TEXT)
 
     left, right = st.columns([1, 2])
     with left:
