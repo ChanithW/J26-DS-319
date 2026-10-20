@@ -35,6 +35,6 @@ def test_the_example_planet_gives_the_high_risk_badge():
     assert any("HIGH RISK" in element.value for element in at.markdown)
 
 
-def test_the_about_and_limits_subheader_is_present():
+def test_the_about_subheader_is_present():
     at = AppTest.from_file(str(APP), default_timeout=30).run()
-    assert any(element.value == "About and limits" for element in at.subheader)
+    assert any(element.value == "About" for element in at.subheader)

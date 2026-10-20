@@ -112,7 +112,7 @@ def render_flags(result):
 
 def render_limits_section():
     """Draw the plain-English notes about what the score means and where it comes from."""
-    st.subheader("About and limits")
+    st.subheader("About")
     text = (
         "- **What the score is:** a physics-based proxy for how much flare and CME energy reaches a planet. "
         "It is not measured or simulated ozone loss.\n"
@@ -147,7 +147,7 @@ def render_future_controls():
     """Draw the disabled controls for the features that come later."""
     st.radio(
         "Input source",
-        ["Manual", "Catalogue", "Teammates' outputs"],
+        ["Manual", "Catalogue", "Previous outputs"],
         index=0,
         key="future_source",
         horizontal=True,
