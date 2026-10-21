@@ -1,0 +1,7 @@
+test set,method,accuracy,macro-F1,off by one tier (of mistakes)
+Lin test,Final model (v2),0.786,0.787,0.991
+Lin test,Previous model (v1),0.74,0.744,0.983
+Lin test,Star info only,0.359,0.377,0.869
+Günther test,Final model (v2),0.799,0.781,0.994
+Günther test,Previous model (v1),0.729,0.695,0.986
+Günther test,Star info only,0.398,0.353,0.805

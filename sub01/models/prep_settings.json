@@ -1,0 +1,42 @@
+{
+ "scaling": {
+  "columns": [
+   "teff",
+   "log10_radius",
+   "log10_distance"
+  ],
+  "mean": [
+   4988.981839,
+   -0.074127,
+   1.982602
+  ],
+  "std": [
+   1179.420624,
+   0.2324,
+   0.352341
+  ]
+ },
+ "weights": {
+  "tier_counts": {
+   "C": 318,
+   "M": 1952,
+   "X": 1882,
+   "Superflare": 525
+  },
+  "tier_weights": {
+   "C": 3.677,
+   "M": 0.599,
+   "X": 0.621,
+   "Superflare": 2.227
+  },
+  "flare_pos_weight": 1.985
+ },
+ "WEAK_SNR": 5,
+ "MATCH_TOL_days": 0.005,
+ "tier_edges_erg": [
+  1e+32,
+  1e+33,
+  1e+34
+ ],
+ "energy_scale": "Lin FEner (G\u00fcnther test flares relabelled where matched)"
+}

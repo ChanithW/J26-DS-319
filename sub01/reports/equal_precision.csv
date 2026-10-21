@@ -1,0 +1,13 @@
+test set,precision fixed at,method,recall,weak recall
+Lin test,0.726 (stella @ best),Final model (v2),0.8275862068965517,0.6267748478701826
+Lin test,0.726 (stella @ best),Previous model (v1),0.8321234119782214,0.6308316430020284
+Lin test,0.726 (stella @ best),stella,0.617059891107078,0.2839756592292089
+Lin test,0.875 (final model),Final model (v2),0.7223230490018149,0.3975659229208925
+Lin test,0.875 (final model),Previous model (v1),0.7087114337568058,0.3772819472616633
+Lin test,0.875 (final model),stella,0.5045372050816697,0.1359026369168357
+Günther test,0.795 (stella @ best),Final model (v2),0.9896265560165975,0.9363636363636364
+Günther test,0.795 (stella @ best),Previous model (v1),0.9896265560165975,0.9454545454545454
+Günther test,0.795 (stella @ best),stella,0.9470954356846473,0.8181818181818182
+Günther test,0.884 (final model),Final model (v2),0.979253112033195,0.9090909090909091
+Günther test,0.884 (final model),Previous model (v1),0.9823651452282157,0.9
+Günther test,0.884 (final model),stella,0.8817427385892116,0.6363636363636364

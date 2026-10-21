@@ -1,0 +1,6 @@
+method,recall,weak recall,n
+Lin et al. 2024 pipeline,0.0,0.0,1675
+Final model (v2),0.948,0.894,1675
+Threshold method,0.447,0.367,1675
+stella @ 0.5 (sampled stars only),0.973,0.941,257
+Final model (v2) – same sampled stars,0.942,0.882,257
