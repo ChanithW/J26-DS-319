@@ -1,0 +1,17 @@
+# Sub-topic 1 - flare detection & energy classification
+# Use Python 3.12 (the version all four components support). Install from sub01/:
+#   pip install -r requirements.txt
+
+numpy
+pandas
+scipy
+pyyaml              # reads configs/config.yaml
+tensorflow>=2.16    # two-head 1D-CNN (2.16+ supports Python 3.12)
+
+lightkurve          # downloads TESS light curves from NASA MAST
+astroquery          # TESS Input Catalog and flare catalogues (VizieR)
+
+streamlit           # web app 
+plotly              # interactive light-curve chart
+
+pytest              # tests

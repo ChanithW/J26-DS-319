@@ -1,0 +1,33 @@
+{
+ "threshold": 0.7700000000000002,
+ "channels": [
+  "(x-1)/noise clipped [-10,60]",
+  "arcsinh((x-1)/0.01)"
+ ],
+ "augment": true,
+ "noise_factor": 1.0,
+ "epochs_run": 15,
+ "scaling": {
+  "columns": [
+   "teff",
+   "log10_radius",
+   "log10_distance"
+  ],
+  "mean": [
+   4988.981839,
+   -0.074127,
+   1.982602
+  ],
+  "std": [
+   1179.420624,
+   0.2324,
+   0.352341
+  ]
+ },
+ "variant": "SPLIT_W2",
+ "config": {
+  "tier_weight": 2.0,
+  "split_last": true
+ },
+ "seed": 123
+}

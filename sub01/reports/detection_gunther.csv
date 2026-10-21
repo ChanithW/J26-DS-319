@@ -1,0 +1,6 @@
+method,precision,recall,F1,weak recall,strong recall,AP
+Final model (v2),0.884,0.979,0.929,0.909,0.988,0.987
+Previous model (v1),0.782,0.991,0.874,0.945,0.996,0.988
+stella @ 0.5,0.473,0.98,0.639,0.945,0.985,0.911
+stella @ best (0.95),0.795,0.947,0.864,0.818,0.964,0.911
+Threshold method (3σ),0.966,0.568,0.716,0.273,0.607,

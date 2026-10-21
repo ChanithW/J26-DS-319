@@ -1,0 +1,12 @@
+test set,result,value
+Lin test,Detection AP – final model vs stella,0.887 vs 0.767
+Lin test,Detection F1 – final model vs stella @ best,0.791 vs 0.667
+Lin test,Weak recall – final model vs threshold method,0.398 vs 0.022
+Günther test,Detection AP – final model vs stella,0.987 vs 0.911
+Günther test,Detection F1 – final model vs stella @ best,0.929 vs 0.864
+Günther test,Weak recall – final model vs threshold method,0.909 vs 0.273
+Günther test,Weak recall at equal precision 0.795 – final vs stella,0.936 vs 0.818
+Lin test,Weak recall at equal precision 0.726 – final vs stella,0.627 vs 0.284
+Lin test,Tier accuracy / macro-F1 (final model),0.786 / 0.787  (star-info-only: 0.359 / 0.377)
+Günther test,Tier accuracy / macro-F1 (final model),0.799 / 0.781  (star-info-only: 0.398 / 0.353)
+Günther test,Recall on flares Lin's catalogue missed,0.948 (Lin: 0)
