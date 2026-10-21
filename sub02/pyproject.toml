@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "component2"
+version = "0.1.0"
+description = "Component 2 (IT4010 J26-DS-319): CME occurrence prediction for stellar flares, transferred from solar flares"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.26",
+    "pandas>=2.1",
+    "scipy>=1.11",
+    "scikit-learn>=1.4",
+    "xgboost>=2.0",
+    "joblib>=1.3",
+    "pydantic>=2.5",
+    "fastapi>=0.110",
+    "uvicorn>=0.27",
+    "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+fetch = ["lightkurve>=2.4"]
+dev = ["pytest>=8", "httpx>=0.27"]
+
+[project.scripts]
+component2 = "component2.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
