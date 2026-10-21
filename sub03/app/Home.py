@@ -10,7 +10,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # make sub03/ impo
 
 import streamlit as st  # noqa: E402
 
+from subtopic3.theme import apply_theme  # noqa: E402
 from subtopic3.ui import render  # noqa: E402
 
-st.set_page_config(page_title="Sub-topic 3 - Flare prediction", layout="centered")
+st.set_page_config(page_title="Sub-topic 3 - Flare prediction", page_icon="🔥", layout="wide")
+apply_theme()
 render()

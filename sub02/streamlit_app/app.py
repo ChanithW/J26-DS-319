@@ -11,7 +11,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # so views can 
 
 import streamlit as st
 
+from theme import apply_theme
+
 st.set_page_config(page_title="Flare CME predictor", page_icon="🔭", layout="wide")
+apply_theme()
 
 pages = [
     st.Page("views/predict.py", title="Predict", icon="🔭", default=True),

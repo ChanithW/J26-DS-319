@@ -14,6 +14,9 @@ import streamlit as st  # noqa: E402
 
 from risk_scoring import catalogue, config, csv_input, explain, predictor  # noqa: E402
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # make theme.py importable
+from theme import apply_theme  # noqa: E402
+
 INPUT_FIELDS = ["koi_sma", "flare_rate_month", "flare_rate_all", "max_logE", "Teff", "cme_prob"]
 
 FIELD_LABELS = {
@@ -495,7 +498,8 @@ def _row_label(row):
 
 def main():
     """Draw the whole page."""
-    st.set_page_config(page_title="Habitability Risk Scoring", layout="wide")
+    st.set_page_config(page_title="Sub-topic 4 - Habitability risk", page_icon="🪐", layout="wide")
+    apply_theme()
     st.title("Habitability Risk Scoring")
     st.caption("Sub-topic 4 | AI-Driven Stellar Flare Analysis and Exoplanetary Habitability Impact Assessment")
 

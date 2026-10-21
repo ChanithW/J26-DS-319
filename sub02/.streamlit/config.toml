@@ -1,0 +1,20 @@
+# Shared look for every sub-topic app (identical in sub01-sub04).
+[theme]
+primaryColor = "#4f46e5"
+font = "sans serif"
+baseRadius = "0.5rem"
+borderColor = "#e2e8f0"
+
+[theme.light]
+backgroundColor = "#f8fafc"
+secondaryBackgroundColor = "#ffffff"
+textColor = "#0f172a"
+linkColor = "#4338ca"
+
+[theme.dark]
+primaryColor = "#818cf8"
+backgroundColor = "#020617"
+secondaryBackgroundColor = "#0f172a"
+textColor = "#f1f5f9"
+linkColor = "#a5b4fc"
+borderColor = "#1e293b"

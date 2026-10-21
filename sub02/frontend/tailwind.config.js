@@ -4,6 +4,7 @@ export default {
   darkMode: "media",
   theme: {
     extend: {
+      fontFamily: { sans: ["\"Source Sans 3\"", "\"Source Sans Pro\"", "ui-sans-serif", "system-ui", "sans-serif"] },
       colors: {
         accent: { DEFAULT: "#4f46e5", dark: "#818cf8" },
       },

@@ -10,8 +10,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))   # make fl
 
 import streamlit as st  # noqa: E402
 
+from flare_cnn.theme import apply_theme  # noqa: E402
 from flare_cnn.ui import render  # noqa: E402
 
-st.set_page_config(page_title="J26-DS-319 - Sub-topic 1", page_icon="🌟", layout="wide")
+st.set_page_config(page_title="Sub-topic 1 - Flare detection", page_icon="🌟", layout="wide")
+apply_theme()
 
 render()

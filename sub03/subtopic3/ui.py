@@ -65,8 +65,8 @@ def _interval_plot(result: dict):
     ]
     for ax, key, label, log in panels:
         lo, mid, hi = result[f"{key}_lower"], result[key], result[f"{key}_upper"]
-        ax.errorbar([mid], [0], xerr=[[mid - lo], [hi - mid]], fmt="o", color="#c0392b",
-                    ecolor="#e67e22", elinewidth=6, capsize=6, ms=8)
+        ax.errorbar([mid], [0], xerr=[[mid - lo], [hi - mid]], fmt="o", color="#4f46e5",
+                    ecolor="#a5b4fc", elinewidth=6, capsize=6, ms=8)
         if log:
             ax.set_xscale("log")
         pad = (hi - lo) * 0.25 if not log else 0
