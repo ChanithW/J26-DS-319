@@ -1,0 +1,16 @@
+# Component 2 default configuration
+alpha: 0.10                 # conformal miscoverage
+split_seed: 0
+split_folds: 4              # fold 0 = test, 1 = calibration, 2-3 = train
+n_bootstrap: 50
+bootstrap_seed: 0
+phase_seed: 0               # random 2-minute bin start phase for solar flares
+window_min: [-20.0, 90.0]
+min_points: 20
+min_bin_points: 20          # raw solar readings required per 2-minute bin
+alignment: diag             # none | diag | coral
+conformal_weighted: true
+label_rule: platt_base      # platt_base | raw_0.5
+max_missing_features: 5     # more missing than this forces reliability=uncertain
+range_percentiles: [0.5, 99.5]
+fetch_lightcurves: false    # optional Lightkurve fetch (off by default)
