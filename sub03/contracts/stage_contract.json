@@ -1,0 +1,132 @@
+{
+  "session_state": {
+    "root_key": "pipeline",
+    "stage1_key": "stage1",
+    "stage3_key": "stage3"
+  },
+  "stellar_param_fields": [
+    "Teff",
+    "logg",
+    "Prot",
+    "radius_gspphot",
+    "mh_gspphot",
+    "bp_rp",
+    "parallax",
+    "phot_g_mean_mag"
+  ],
+  "stage1_output": {
+    "is_flare": {
+      "types": [
+        "bool"
+      ],
+      "required": true,
+      "description": "Stage-1 verdict. Sub-topic 3 runs only when True."
+    },
+    "KIC": {
+      "types": [
+        "int",
+        "NoneType"
+      ],
+      "required": false,
+      "description": "Kepler Input Catalog ID of the star, if known."
+    },
+    "stellar_params": {
+      "types": [
+        "dict",
+        "NoneType"
+      ],
+      "required": false,
+      "description": "Optional dict of stellar parameters (keys from STELLAR_PARAM_FIELDS, plus optional 'spectral_type'). Used when the KIC is not in the dataset."
+    },
+    "flare_probability": {
+      "types": [
+        "float",
+        "int",
+        "NoneType"
+      ],
+      "required": false,
+      "description": "Classifier confidence for 'flare' (0-1)."
+    },
+    "flare_details": {
+      "types": [
+        "dict",
+        "NoneType"
+      ],
+      "required": false,
+      "description": "Free-form details of the detected event."
+    }
+  },
+  "stage3_output": {
+    "KIC": {
+      "types": [
+        "int",
+        "NoneType"
+      ],
+      "required": true,
+      "description": "Star ID (None if parameters were entered manually)."
+    },
+    "spectral_type": {
+      "types": [
+        "str"
+      ],
+      "required": true,
+      "description": "One of F, G, K, M."
+    },
+    "pred_flare_rate": {
+      "types": [
+        "float"
+      ],
+      "required": true,
+      "description": "Predicted flare rate [flares/day] (point estimate)."
+    },
+    "pred_flare_rate_lower": {
+      "types": [
+        "float"
+      ],
+      "required": true,
+      "description": "Lower bound of the 80 % interval [flares/day]."
+    },
+    "pred_flare_rate_upper": {
+      "types": [
+        "float"
+      ],
+      "required": true,
+      "description": "Upper bound of the 80 % interval [flares/day]."
+    },
+    "pred_logE": {
+      "types": [
+        "float"
+      ],
+      "required": true,
+      "description": "Predicted median flare energy, log10(E / erg) (point estimate)."
+    },
+    "pred_logE_lower": {
+      "types": [
+        "float"
+      ],
+      "required": true,
+      "description": "Lower bound of the 80 % interval, log10(erg)."
+    },
+    "pred_logE_upper": {
+      "types": [
+        "float"
+      ],
+      "required": true,
+      "description": "Upper bound of the 80 % interval, log10(erg)."
+    },
+    "detection_bias_flag": {
+      "types": [
+        "bool"
+      ],
+      "required": true,
+      "description": "True for F-type stars: Kepler selection bias inflates their apparent rates/energies (observational, not physical)."
+    },
+    "interval_level": {
+      "types": [
+        "float"
+      ],
+      "required": false,
+      "description": "Nominal coverage of the intervals (0.80)."
+    }
+  }
+}
