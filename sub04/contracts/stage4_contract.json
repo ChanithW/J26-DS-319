@@ -1,0 +1,102 @@
+{
+  "stage": "Sub-topic 4 habitability risk scoring",
+  "inputs": {
+    "koi_sma": {
+      "type": "float",
+      "unit": "AU",
+      "required": true,
+      "description": "Orbital distance of the planet around its star.",
+      "training_range": [0.0059, 9.9]
+    },
+    "flare_rate_month": {
+      "type": "float",
+      "unit": "flares per month",
+      "required": true,
+      "description": "Number of big flares (1e34 erg or more) per month.",
+      "training_range": [0.0, 11.450303139606332]
+    },
+    "flare_rate_all": {
+      "type": "float",
+      "unit": "flares per month",
+      "required": true,
+      "description": "Number of all flares per month.",
+      "training_range": [0.0196078431372549, 48.03628476486142]
+    },
+    "max_logE": {
+      "type": "float",
+      "unit": "log10(erg)",
+      "required": true,
+      "description": "log10 of the energy of the strongest flare in erg.",
+      "training_range": [30.716837723299523, 37.600972895686745]
+    },
+    "Teff": {
+      "type": "float",
+      "unit": "K",
+      "required": true,
+      "description": "Effective temperature of the star.",
+      "training_range": [2790.0, 9196.7]
+    },
+    "cme_prob": {
+      "type": "float",
+      "unit": "probability (0 to 1)",
+      "required": false,
+      "default": 0.47,
+      "description": "Probability that a flare is followed by a coronal mass ejection. Used in the formula label only. When left empty the default is used.",
+      "training_range": [0.0745364081101825, 0.4324161639899621]
+    }
+  },
+  "outputs": {
+    "ok": {
+      "type": "bool",
+      "description": "True when the inputs passed validation and the model ran."
+    },
+    "errors": {
+      "type": "list of str",
+      "description": "Plain-English messages about inputs that are missing or not usable. Empty when ok is true."
+    },
+    "flags": {
+      "type": "list of str",
+      "description": "Non-blocking notes, such as values outside the training range."
+    },
+    "ml_class": {
+      "type": "str",
+      "values": ["Low", "Medium", "High"],
+      "description": "Risk class from the dose-label model."
+    },
+    "probabilities": {
+      "type": "dict of str to float",
+      "description": "Class probability for each of Low, Medium and High, adding up to 1."
+    },
+    "formula_label": {
+      "type": "str",
+      "values": ["Low", "Medium", "High"],
+      "description": "Risk class from the R_eff formula."
+    },
+    "r_eff": {
+      "type": "float",
+      "description": "Relative atmospheric escape at the planet from the formula."
+    },
+    "star_type": {
+      "type": "int",
+      "values": [0, 1, 2, 3],
+      "description": "Star type code from the star temperature: 0 F, 1 G, 2 K, 3 M."
+    },
+    "star_type_letter": {
+      "type": "str",
+      "values": ["F", "G", "K", "M"],
+      "description": "Spectral letter of the star type."
+    },
+    "drivers": {
+      "type": "list of dict",
+      "description": "Top drivers for the ml_class, largest absolute contribution first. Each item has feature, name, value, contribution and direction (toward, away or neutral)."
+    },
+    "explanation": {
+      "type": "str",
+      "description": "Plain-English sentence about the drivers."
+    }
+  },
+  "notes": [
+    "This is a physics-based risk score, not measured ozone loss.",
+    "Planned: inputs from Sub-topics 1, 2 and 3. Column names and units are not confirmed with those sub-topics."
+  ]
+}
