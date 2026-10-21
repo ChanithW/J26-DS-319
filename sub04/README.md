@@ -42,6 +42,6 @@ pushed the risk up or down.
 
 ## Status
 
-- Manual input page only.
-- Star ID lookup is planned and disabled.
-- Teammate-output inputs are planned and disabled.
+- Manual input page and a CSV upload for the results of another sub-topic.
+- Star ID lookup in the Catalogue mode: the held-out test stars of the training
+  data, with the planet picker for the stars that have more than one planet.
