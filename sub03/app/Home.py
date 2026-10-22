@@ -12,5 +12,5 @@ import streamlit as st  # noqa: E402
 
 from subtopic3.ui import render  # noqa: E402
 
-st.set_page_config(page_title="Sub-topic 3 - Flare prediction", layout="centered")
+st.set_page_config(page_title="Sub-topic 3 - Flare prediction", page_icon="🌟", layout="centered")
 render()

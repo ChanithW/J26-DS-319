@@ -1,0 +1,12 @@
+# Streamlit theme for the Sub-topic 3 app (space / stellar-flare look).
+# Streamlit reads this when the app is started from the sub03/ folder.
+[theme]
+base = "dark"
+primaryColor = "#ff8a2b"              # flare orange
+backgroundColor = "#04050d"           # deep space
+secondaryBackgroundColor = "#12152b"  # panels / inputs
+textColor = "#e8ebff"                 # starlight white
+font = "sans serif"
+
+[client]
+toolbarMode = "minimal"

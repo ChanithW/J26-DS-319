@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import streamlit as st
 
+from . import theme
 from .contracts import STELLAR_PARAM_FIELDS
 from .pipeline import load_catalog, lookup_star
 from .predictor import FlarePredictor, InputError
@@ -59,21 +60,27 @@ def _is_missing(v) -> bool:
 def _interval_plot(result: dict):
     """Two small panels: flare rate (log axis) and log E, point + 80 % interval."""
     fig, axes = plt.subplots(1, 2, figsize=(9, 1.9))
+    fig.patch.set_alpha(0)  # transparent, so the page's space background shows through
     panels = [
         (axes[0], "pred_flare_rate", "Flare rate [flares/day]", True),
         (axes[1], "pred_logE", "Median flare energy log10(E/erg)", False),
     ]
     for ax, key, label, log in panels:
         lo, mid, hi = result[f"{key}_lower"], result[key], result[f"{key}_upper"]
-        ax.errorbar([mid], [0], xerr=[[mid - lo], [hi - mid]], fmt="o", color="#c0392b",
-                    ecolor="#e67e22", elinewidth=6, capsize=6, ms=8)
+        ax.set_facecolor((0.07, 0.08, 0.17, 0.6))
+        ax.errorbar([mid], [0], xerr=[[mid - lo], [hi - mid]], fmt="o", color=theme.FLARE_YELLOW,
+                    ecolor=theme.FLARE_ORANGE, elinewidth=6, capsize=6, ms=9,
+                    markeredgecolor="white", markeredgewidth=1)
         if log:
             ax.set_xscale("log")
         pad = (hi - lo) * 0.25 if not log else 0
         ax.set_xlim((lo / 1.6, hi * 1.6) if log else (lo - pad, hi + pad))
         ax.set_yticks([])
-        ax.set_xlabel(label)
-        ax.grid(axis="x", alpha=0.3)
+        ax.set_xlabel(label, color=theme.STAR_WHITE)
+        ax.tick_params(colors=theme.MUTED_TEXT, which="both")
+        for spine in ax.spines.values():
+            spine.set_color(theme.GRID_LINE)
+        ax.grid(axis="x", color=theme.GRID_LINE, alpha=0.8)
     fig.tight_layout()
     return fig
 
@@ -203,10 +210,11 @@ def _batch_tab() -> None:
 
 # ------------------------------------------------------------------ entry
 def render() -> None:
-    st.title("Stellar flare frequency & energy prediction")
-    st.caption(
-        "Sub-topic 3 - predicts how often a star flares and how energetic its typical "
-        "flare is, with an 80 % conformal prediction interval. Covers F, G, K and M dwarfs."
+    theme.apply_space_theme()
+    theme.hero(
+        "Stellar flare frequency &amp; energy prediction",
+        "Predicts how often a star flares and how energetic its typical flare is, "
+        "with an 80 % conformal prediction interval. Covers F, G, K and M dwarfs.",
     )
     single, batch = st.tabs(["Single star", "Batch CSV"])
     with single:
