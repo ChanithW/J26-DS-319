@@ -12,5 +12,7 @@ alignment: diag             # none | diag | coral
 conformal_weighted: true
 label_rule: platt_base      # platt_base | raw_0.5
 max_missing_features: 5     # more missing than this forces reliability=uncertain
+out_of_range_check: false   # true: a flare with any feature outside the solar training range is forced to uncertain
+                            # (a safety check added for the system; NOT part of the research runs, so off by default)
 range_percentiles: [0.5, 99.5]
 fetch_lightcurves: false    # optional Lightkurve fetch (off by default)

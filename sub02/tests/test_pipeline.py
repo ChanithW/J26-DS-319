@@ -63,17 +63,46 @@ def test_output_schema_and_rows(bundle):
     assert set(out["reliability"]) <= {"confident", "uncertain"}
 
 
-def test_missing_features_and_out_of_range_are_uncertain(bundle):
+def _far_and_many_missing():
     base = make_table(3, 7, labelled=False)
     many = base.copy()
     many.loc[0, FEATS13[:8]] = np.nan                    # 8 missing > 5
     far = base.copy()
     far.loc[1, "eff_dur_min"] = 1e9
-    out = predict_features(bundle, pd.concat([many.iloc[[0]], far.iloc[[1]]]))
+    return pd.concat([many.iloc[[0]], far.iloc[[1]]])
+
+
+def test_many_missing_features_are_uncertain(bundle):
+    out = predict_features(bundle, _far_and_many_missing())
     assert out.loc[0, "features_missing"] == 8 and "many_features_missing" in out.loc[0, "warnings"]
     assert out.loc[0, "reliability"] == "uncertain"
+
+
+def test_out_of_range_check_when_switched_on(bundle):
+    out = predict_features(bundle, _far_and_many_missing(), out_of_range_check=True)
     assert bool(out.loc[1, "out_of_range"]) and "out_of_range" in out.loc[1, "warnings"]
     assert out.loc[1, "reliability"] == "uncertain"
+    # the switch can also come from the bundle's config
+    on = {**bundle, "config": {**bundle["config"], "out_of_range_check": True}}
+    assert bool(predict_features(on, _far_and_many_missing()).loc[1, "out_of_range"])
+
+
+def test_out_of_range_check_is_off_by_default(bundle):
+    far = _far_and_many_missing().iloc[[1]]
+    off = predict_features(bundle, far)
+    assert off.loc[0, "out_of_range"] is None and "out_of_range" not in off.loc[0, "warnings"]   # "not checked"
+    assert off.loc[0, "reliability"] == ("confident" if off.loc[0, "conformal_set"] in ("E", "C") else "uncertain")
+    # switching the check on can only turn confident into uncertain; scores, range and label never change
+    on = predict_features(bundle, far, out_of_range_check=True)
+    for c in ("calibrated_probability", "confidence_lower", "confidence_upper", "predicted_label", "raw_score", "conformal_set"):
+        assert on.loc[0, c] == off.loc[0, c]
+    assert on.loc[0, "reliability"] == "uncertain" or off.loc[0, "reliability"] == "confident"
+
+
+def test_old_bundles_without_the_setting_default_to_off(bundle):
+    cfg = {k: v for k, v in bundle["config"].items() if k != "out_of_range_check"}
+    out = predict_features({**bundle, "config": cfg}, _far_and_many_missing())
+    assert out["out_of_range"].isna().all()
 
 
 def curve(tpeak=100.0, tau=15.0, n=56):

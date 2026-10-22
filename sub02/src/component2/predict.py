@@ -19,10 +19,15 @@ OUTPUT_COLUMNS = ["flare_id", "star_id", "status", "calibrated_probability", "co
                   "out_of_range", "warnings", "raw_score", "conformal_set"]
 
 
-def predict_features(bundle: dict, df: pd.DataFrame) -> pd.DataFrame:
-    """Score a table of flare features (columns: flare_id, star_id and the 13 features)."""
+def predict_features(bundle: dict, df: pd.DataFrame, out_of_range_check: bool | None = None) -> pd.DataFrame:
+    """Score a table of flare features (columns: flare_id, star_id and the 13 features).
+
+    ``out_of_range_check`` overrides the bundle config. When it is off (the default) the range check is not run:
+    nothing is forced to uncertain, no warning is added and ``out_of_range`` is None ("not checked").
+    """
     cols = bundle["feats"]
     cfg = bundle["config"]
+    check_range = cfg.get("out_of_range_check", False) if out_of_range_check is None else out_of_range_check
     missing = [c for c in ["flare_id", "star_id"] + cols if c not in df.columns]
     if missing:
         raise ValueError("missing input columns: %s" % missing)
@@ -45,7 +50,7 @@ def predict_features(bundle: dict, df: pd.DataFrame) -> pd.DataFrame:
             qa, qb = cf["q1"], cf["q0"]
         sets.append((bool((1 - p[i]) <= qa), bool(p[i] <= qb)))
 
-    out_of_range = ((L < bundle["range_lo"]) | (L > bundle["range_hi"])).any(axis=1)
+    out_of_range = ((L < bundle["range_lo"]) | (L > bundle["range_hi"])).any(axis=1) if check_range else None
     platt = bundle["platt"]
     cp = platt(p)
     if cfg["label_rule"] == "raw_0.5":
@@ -60,7 +65,7 @@ def predict_features(bundle: dict, df: pd.DataFrame) -> pd.DataFrame:
         if nmiss[i] > cfg["max_missing_features"]:
             w.append("many_features_missing")
             ok = False
-        if out_of_range[i]:
+        if check_range and out_of_range[i]:
             w.append("out_of_range")
             ok = False
         warnings_.append(w)
@@ -71,7 +76,8 @@ def predict_features(bundle: dict, df: pd.DataFrame) -> pd.DataFrame:
         "calibrated_probability": cp.round(3), "confidence_lower": platt(lo_).round(3),
         "confidence_upper": platt(hi_).round(3),
         "predicted_label": np.where(eruptive, "eruptive", "confined"),
-        "reliability": reliab, "features_missing": nmiss, "out_of_range": out_of_range,
+        "reliability": reliab, "features_missing": nmiss,
+        "out_of_range": out_of_range if check_range else [None] * len(L),
         "warnings": warnings_, "raw_score": p.round(4),
         "conformal_set": [set_label(a, b) for a, b in sets],
     })[OUTPUT_COLUMNS]
@@ -84,7 +90,8 @@ def _empty_row(rec: dict, status: str) -> dict:
     return row
 
 
-def predict_records(bundle: dict, records: Iterable[dict[str, Any]], details: bool = False) -> pd.DataFrame:
+def predict_records(bundle: dict, records: Iterable[dict[str, Any]], details: bool = False,
+                    out_of_range_check: bool | None = None) -> pd.DataFrame:
     """Predict from raw light curves. One bad flare never fails the batch.
 
     Each record needs flare_id, star_id, tpeak, time (days, BTJD) and flux.
@@ -124,7 +131,7 @@ def predict_records(bundle: dict, records: Iterable[dict[str, Any]], details: bo
         rows.append(None)
         feat_rows.append({"flare_id": rec["flare_id"], "star_id": rec["star_id"], **feats})
     if feat_rows:
-        scored = predict_features(bundle, pd.DataFrame(feat_rows))
+        scored = predict_features(bundle, pd.DataFrame(feat_rows), out_of_range_check)
         for pos, (_, r) in zip(feat_pos, scored.iterrows()):
             rows[pos] = r.to_dict()
     out = pd.DataFrame(rows, columns=OUTPUT_COLUMNS)

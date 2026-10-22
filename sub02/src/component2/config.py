@@ -26,6 +26,7 @@ class Config:
     conformal_weighted: bool = True
     label_rule: str = "platt_base"
     max_missing_features: int = 5
+    out_of_range_check: bool = False
     range_percentiles: tuple[float, float] = (0.5, 99.5)
     fetch_lightcurves: bool = False
 

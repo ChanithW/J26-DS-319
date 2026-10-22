@@ -117,3 +117,25 @@ def test_saved_run_read_export_delete(client):
 def test_openapi_json_is_committed_and_current():
     assert OPENAPI_PATH.exists(), "run: python -m component2.api.dump_openapi"
     assert json.loads(OPENAPI_PATH.read_text(encoding="utf-8")) == json.loads(json.dumps(build_schema()))
+
+
+def test_out_of_range_check_setting_reaches_the_model(bundle, tmp_path, monkeypatch):
+    """OUT_OF_RANGE_CHECK=true is passed down to prediction; unset means 'use the bundle' (off by default)."""
+    import component2.api.service as service
+
+    seen = []
+    real = service.predict_records
+    monkeypatch.setattr(service, "predict_records", lambda b, r, details=False, out_of_range_check=None:
+                        (seen.append(out_of_range_check), real(b, r, details=details, out_of_range_check=out_of_range_check))[1])
+    bpath = tmp_path / "b.joblib"
+    save_bundle(bundle, bpath)
+    for setting, expected in ((None, None), (True, True)):
+        s = Settings(component2_bundle_path=str(bpath), database_url=f"sqlite:///{tmp_path / 'runs.db'}",
+                     out_of_range_check=setting)
+        with TestClient(create_app(s)) as c:
+            assert c.post(f"{P}/predict", json={"flares": [curve()]}).status_code == 200
+        assert seen[-1] is expected
+    # default: the result says "not checked" (null), not "no"
+    with TestClient(create_app(Settings(component2_bundle_path=str(bpath), database_url="sqlite://"))) as c:
+        r = c.post(f"{P}/predict", json={"flares": [curve()]}).json()["results"][0]
+        assert r["out_of_range"] is None and "out_of_range" not in r["warnings"]

@@ -31,9 +31,9 @@ def _clean(v):
     return v
 
 
-def run_prediction(bundle: dict, records: list[dict]) -> tuple[list[dict], dict]:
+def run_prediction(bundle: dict, records: list[dict], out_of_range_check: bool | None = None) -> tuple[list[dict], dict]:
     """Run the model; returns (results, summary). One bad flare never fails the batch."""
-    df = predict_records(bundle, records, details=True)
+    df = predict_records(bundle, records, details=True, out_of_range_check=out_of_range_check)
     results = [_clean(r) for r in df.to_dict(orient="records")]
     for r in results:
         r["warnings"] = r.get("warnings") or []
@@ -48,8 +48,9 @@ def run_prediction(bundle: dict, records: list[dict]) -> tuple[list[dict], dict]
     return results, summary
 
 
-def build_run(bundle: dict, records: list[dict], save: bool, name: str | None, session_factory) -> dict:
-    results, summary = run_prediction(bundle, records)
+def build_run(bundle: dict, records: list[dict], save: bool, name: str | None, session_factory,
+              out_of_range_check: bool | None = None) -> dict:
+    results, summary = run_prediction(bundle, records, out_of_range_check)
     now = datetime.now(timezone.utc)
     run_id = None
     if save:

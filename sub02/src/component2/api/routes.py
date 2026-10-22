@@ -81,7 +81,8 @@ def predict(req: PredictRequest, request: Request) -> dict:
     records = [f.model_dump() for f in req.flares]
     _check_limits(request, records)
     records = _fill_fetched(request, records)
-    return build_run(bundle, records, req.save_run, req.run_name, request.app.state.session_factory)
+    return build_run(bundle, records, req.save_run, req.run_name, request.app.state.session_factory,
+                     request.app.state.settings.out_of_range_check)
 
 
 @router.post("/predict/file", response_model=RunResponse)
@@ -96,7 +97,8 @@ async def predict_file(request: Request, file: UploadFile = File(...), save_run:
     except CsvError as e:
         raise ApiError(422, "invalid_csv", str(e))
     _check_limits(request, records)
-    return build_run(bundle, records, save_run, run_name, request.app.state.session_factory)
+    return build_run(bundle, records, save_run, run_name, request.app.state.session_factory,
+                     request.app.state.settings.out_of_range_check)
 
 
 @router.get("/runs", response_model=list[RunListItem])

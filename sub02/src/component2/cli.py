@@ -42,7 +42,7 @@ def _predict(args) -> int:
     with open(args.input, encoding="utf-8") as fh:
         data = json.load(fh)
     records = data["flares"] if isinstance(data, dict) else data
-    pred = predict_records(bundle, records)
+    pred = predict_records(bundle, records, out_of_range_check=True if args.out_of_range_check else None)
     pred.assign(warnings=pred["warnings"].map(lambda w: ";".join(w) if isinstance(w, list) else "")) \
         .to_csv(args.out, index=False)
     if args.handoff:
@@ -96,6 +96,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--input", required=True)
     p.add_argument("--out", default="predictions.csv")
     p.add_argument("--handoff", default=None, help="also write the Sub-topic 4 hand-off CSV")
+    p.add_argument("--out-of-range-check", action="store_true",
+                   help="force flares with a feature outside the solar training range to uncertain (off by default)")
     p.set_defaults(fn=_predict)
 
     e = sub.add_parser("evaluate", help="re-run the solar test-set checks")

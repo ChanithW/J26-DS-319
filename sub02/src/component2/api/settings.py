@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     max_flares_per_request: int = 500
     max_points_per_flare: int = 5000
     enable_lightkurve_fetch: bool = False
+    out_of_range_check: bool | None = None   # None: use the bundle's setting (off by default)
     sample_data_dir: str = "data/tess_raw"
 
     @property
