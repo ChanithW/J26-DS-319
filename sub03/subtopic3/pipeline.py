@@ -24,12 +24,15 @@ class GatingError(RuntimeError):
 
 def check_gate(stage1: Mapping[str, Any] | None) -> None:
     """Allow Sub-topic 3 only if Stage 1 exists, is valid, and is_flare is True."""
+    # 1) Stage 1 has not produced anything yet.
     if not stage1:
         raise GatingError("No Stage 1 result found. Run flare detection (Stage 1) first.")
+    # 2) Stage 1 produced something that does not follow the contract.
     try:
         validate_stage1_output(dict(stage1))
     except ContractError as exc:
         raise GatingError(f"Stage 1 result is malformed: {exc}") from exc
+    # 3) Stage 1 says "not a flare" (strict check: only the boolean True passes).
     if stage1["is_flare"] is not True:
         raise GatingError(
             "Stage 1 classified this event as NOT a flare. Flare frequency/energy "
@@ -40,7 +43,9 @@ def check_gate(stage1: Mapping[str, Any] | None) -> None:
 @lru_cache(maxsize=1)
 def load_catalog(path: str | None = None) -> pd.DataFrame:
     """Read the stellar flare database once, indexed by KIC."""
+    # lru_cache keeps the 2,910-row table in memory after the first call.
     df = pd.read_csv(path or config.DATA_PATH)
+    # Index by KIC for fast lookups, but keep KIC as a column too.
     return df.set_index("KIC", drop=False)
 
 
@@ -48,10 +53,12 @@ def lookup_star(kic: int | None, catalog: pd.DataFrame | None = None) -> dict | 
     """Stellar parameters for a KIC from the dataset, or None if unknown."""
     if kic is None:
         return None
+    # Tests may pass their own catalog; normally the cached dataset is used.
     catalog = load_catalog() if catalog is None else catalog
     if kic not in catalog.index:
         return None
     row = catalog.loc[kic]
+    # Copy only the model's parameters (+ spectral type); NaN -> None (= unknown).
     params = {}
     for name in (*STELLAR_PARAM_FIELDS, "spectral_type"):
         value = row[name]
@@ -81,7 +88,9 @@ def run_stage3(
     ``params`` lets the UI pass user-edited parameters; otherwise they are resolved
     from the dataset / Stage 1. Returns (stage3_output, warnings).
     """
+    # Never predict unless Stage 1 confirmed a flare.
     check_gate(stage1)
+    # No parameters from the UI: take them from the dataset / Stage 1.
     if params is None:
         params, _ = resolve_params(stage1)
     return predictor.predict_one(params, kic=stage1.get("KIC"))

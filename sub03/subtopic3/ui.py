@@ -42,6 +42,7 @@ BIAS_EXPLANATION = (
     "**observational artefact, not a physical result** - interpret with caution."
 )
 
+# The two ways of choosing a star on the "Single star" tab.
 MODE_DATASET = "Find a star by KIC (auto-fill from dataset)"
 MODE_MANUAL = "Enter stellar parameters manually"
 
@@ -49,11 +50,14 @@ MODE_MANUAL = "Enter stellar parameters manually"
 @st.cache_resource(show_spinner="Loading flare model ...")
 def get_predictor() -> FlarePredictor:
     """Load the pickle once per server process."""
+    # st.cache_resource shares this one object across all users and reruns,
+    # so the ~34 MB model is not reloaded on every button click.
     return FlarePredictor()
 
 
 # ---------------------------------------------------------------- helpers
 def _is_missing(v) -> bool:
+    """True for None or NaN (an unknown value that should show as a blank field)."""
     return v is None or (isinstance(v, float) and math.isnan(v))
 
 
@@ -61,21 +65,26 @@ def _interval_plot(result: dict):
     """Two small panels: flare rate (log axis) and log E, point + 80 % interval."""
     fig, axes = plt.subplots(1, 2, figsize=(9, 1.9))
     fig.patch.set_alpha(0)  # transparent, so the page's space background shows through
+    # (axis, result key, x-axis label, use log scale?)
     panels = [
         (axes[0], "pred_flare_rate", "Flare rate [flares/day]", True),
         (axes[1], "pred_logE", "Median flare energy log10(E/erg)", False),
     ]
     for ax, key, label, log in panels:
         lo, mid, hi = result[f"{key}_lower"], result[key], result[f"{key}_upper"]
-        ax.set_facecolor((0.07, 0.08, 0.17, 0.6))
+        ax.set_facecolor((0.07, 0.08, 0.17, 0.6))  # translucent dark-blue panel
+        # One point (the prediction) with an asymmetric horizontal bar (the interval).
         ax.errorbar([mid], [0], xerr=[[mid - lo], [hi - mid]], fmt="o", color=theme.FLARE_YELLOW,
                     ecolor=theme.FLARE_ORANGE, elinewidth=6, capsize=6, ms=9,
                     markeredgecolor="white", markeredgewidth=1)
+        # Rates span orders of magnitude, so they are shown on a log axis.
         if log:
             ax.set_xscale("log")
+        # Leave some margin around the interval (multiplicative on a log axis).
         pad = (hi - lo) * 0.25 if not log else 0
         ax.set_xlim((lo / 1.6, hi * 1.6) if log else (lo - pad, hi + pad))
-        ax.set_yticks([])
+        ax.set_yticks([])  # the y-axis carries no information
+        # Light text and dim grid lines to match the dark theme.
         ax.set_xlabel(label, color=theme.STAR_WHITE)
         ax.tick_params(colors=theme.MUTED_TEXT, which="both")
         for spine in ax.spines.values():
@@ -86,12 +95,18 @@ def _interval_plot(result: dict):
 
 
 def _choose_star() -> tuple[int | None, dict, str]:
-    """Star selection. Returns (KIC or None, default parameters, widget-key suffix)."""
+    """Star selection. Returns (KIC or None, default parameters, widget-key suffix).
+
+    The key suffix identifies the current choice ("manual", "none" or the KIC);
+    it keeps each star's form widgets and saved result separate.
+    """
     mode = st.radio("Star", [MODE_DATASET, MODE_MANUAL], horizontal=True)
+    # Manual entry: empty form, no KIC.
     if mode == MODE_MANUAL:
         st.info("Teff and log g are required; leave the other fields blank if unknown.")
         return None, {}, "manual"
 
+    # Dataset mode: searchable drop-down of all KICs, labelled with their type.
     catalog = load_catalog()
     kics = sorted(int(k) for k in catalog.index)
     types = catalog["spectral_type"].to_dict()
@@ -99,20 +114,24 @@ def _choose_star() -> tuple[int | None, dict, str]:
         "KIC (type to search)", kics, index=None, placeholder="Choose or type a KIC ...",
         format_func=lambda k: f"KIC {k}  ({types[k]}-type)",
     )
+    # Nothing chosen yet: the caller shows no form.
     if kic is None:
         return None, {}, "none"
+    # Known star: its dataset values become the form's defaults.
     st.success(f"KIC {kic} found in the dataset - parameters auto-filled (you can edit them).")
     return int(kic), lookup_star(int(kic)) or {}, str(kic)
 
 
 def _parameter_form(defaults: dict, key_suffix: str) -> dict | None:
     """Pre-filled parameter form. Returns submitted params, or None if not submitted."""
+    # st.form batches the inputs: the page only reruns when "Predict" is pressed.
     with st.form(f"s3_params_{key_suffix}"):
-        cols = st.columns(2)
+        cols = st.columns(2)  # two-column layout of the 8 parameters
         values = {}
         for i, name in enumerate(STELLAR_PARAM_FIELDS):
             label, help_text = PARAM_LABELS[name]
             default = defaults.get(name)
+            # value=None shows an empty box (unknown value -> NaN in the predictor).
             values[name] = cols[i % 2].number_input(
                 label, value=None if _is_missing(default) else float(default),
                 help=help_text, format="%.0f" if name == "Teff" else "%.4f",
@@ -123,8 +142,16 @@ def _parameter_form(defaults: dict, key_suffix: str) -> dict | None:
 
 
 def _show_result(result: dict, warnings: list[str], observed: dict | None) -> None:
-    level = int(round(result.get("interval_level", 0.8) * 100))
+    """Display one prediction: metric cards, table, interval plot, bias note, download.
+
+    Args:
+        result: output dict from FlarePredictor.predict_one.
+        warnings: non-fatal notes from input validation.
+        observed: catalogue values for a dataset star (None for manual entry).
+    """
+    level = int(round(result.get("interval_level", 0.8) * 100))  # 0.8 -> 80
     st.subheader(f"Predictions (point estimate with {level} % interval)")
+    # Headline numbers; the interval is shown in each card's help tooltip.
     c1, c2, c3 = st.columns(3)
     c1.metric("Spectral type", result["spectral_type"])
     c2.metric("Flare rate [flares/day]", f"{result['pred_flare_rate']:.4f}",
@@ -133,6 +160,7 @@ def _show_result(result: dict, warnings: list[str], observed: dict | None) -> No
     c3.metric("Median flare energy log10(E/erg)", f"{result['pred_logE']:.2f}",
               help=f"{level} % interval: {result['pred_logE_lower']:.2f} - {result['pred_logE_upper']:.2f}")
 
+    # Detailed table: lower / point / upper (rate also converted to flares per year).
     table = pd.DataFrame({
         "Quantity": ["Flare rate [flares/day]", "Flare rate [flares/year]", "Median log10 E [erg]"],
         "Lower": [result["pred_flare_rate_lower"], 365.25 * result["pred_flare_rate_lower"], result["pred_logE_lower"]],
@@ -144,15 +172,18 @@ def _show_result(result: dict, warnings: list[str], observed: dict | None) -> No
                                       observed["median_logE"]]
     st.dataframe(table.style.format({c: "{:.4g}" for c in table.columns if c != "Quantity"}),
                  hide_index=True, width="stretch")
-    st.pyplot(_interval_plot(result), clear_figure=True)
+    st.pyplot(_interval_plot(result), clear_figure=True)  # clear_figure frees memory
 
+    # Explain the F-type detection-bias flag when it is set.
     if result["detection_bias_flag"]:
         st.warning(BIAS_EXPLANATION)
     else:
         st.caption("Detection-bias flag: not set (only F-type stars are flagged).")
+    # Non-fatal notes, e.g. missing optional values or a giant star.
     for w in warnings:
         st.caption(f"Note: {w}")
 
+    # The raw output record, viewable and downloadable.
     with st.expander("Output record (JSON)"):
         st.code(json.dumps(result, indent=2), language="json")
     st.download_button("Download result (JSON)", json.dumps(result, indent=2),
@@ -160,20 +191,25 @@ def _show_result(result: dict, warnings: list[str], observed: dict | None) -> No
 
 
 def _single_star_tab() -> None:
+    """Choose a star, fill / edit its parameters, predict and show the result."""
     kic, defaults, key_suffix = _choose_star()
-    if key_suffix == "none":
+    if key_suffix == "none":  # no KIC picked yet
         return
     params = _parameter_form(defaults, key_suffix)
+    # "Predict" was pressed: run the model and remember the result, because
+    # Streamlit reruns the whole script on every interaction.
     if params is not None:
         try:
             result, warnings = get_predictor().predict_one(params, kic=kic)
             st.session_state["s3_result"] = {"key": key_suffix, "result": result, "warnings": warnings}
         except InputError as exc:
+            # Invalid input: show why and drop any older result.
             st.session_state.pop("s3_result", None)
             st.error(f"Cannot predict: {exc}")
 
     saved = st.session_state.get("s3_result")
     if saved and saved["key"] == key_suffix:  # only show the result for the selected star
+        # For dataset stars, also show the observed Kepler values for comparison.
         observed = None
         if kic is not None:
             row = load_catalog().loc[kic]
@@ -182,26 +218,32 @@ def _single_star_tab() -> None:
 
 
 def _batch_tab() -> None:
+    """Upload a CSV of stars, predict all of them and offer the results as a CSV."""
+    # Explain the expected columns.
     st.markdown(
         "Upload a CSV with columns **Teff, logg** (required) and optionally "
         f"**{', '.join(f for f in STELLAR_PARAM_FIELDS if f not in ('Teff', 'logg'))}, "
         "spectral_type, KIC**. Missing values are allowed (left blank)."
     )
     upload = st.file_uploader("Stellar parameters CSV", type="csv")
-    if upload is None:
+    if upload is None:  # nothing uploaded yet
         return
+    # Read the file; a malformed CSV is reported instead of crashing the page.
     try:
         df = pd.read_csv(upload)
     except Exception as exc:  # noqa: BLE001 - show any parse problem to the user
         st.error(f"Could not read CSV: {exc}")
         return
+    # The two required columns must exist (individual empty cells are handled per row).
     missing = [c for c in ("Teff", "logg") if c not in df.columns]
     if missing:
         st.error(f"Missing required column(s): {', '.join(missing)}")
         return
+    # Predict every row; invalid rows get a message in the 'error' column.
     with st.spinner(f"Predicting {len(df)} stars ..."):
         result = get_predictor().predict_frame(df)
     n_err = int(result["error"].notna().sum())
+    # Summary, table and download of all results.
     st.write(f"{len(df) - n_err} predicted, {n_err} rejected (see 'error' column).")
     st.dataframe(result, width="stretch")
     st.download_button("Download predictions CSV", result.to_csv(index=False),
@@ -210,12 +252,15 @@ def _batch_tab() -> None:
 
 # ------------------------------------------------------------------ entry
 def render() -> None:
+    """Draw the whole Sub-topic 3 page (called by app/Home.py on every rerun)."""
+    # Space background, animations and widget styling, then the page header.
     theme.apply_space_theme()
     theme.hero(
         "Stellar flare frequency &amp; energy prediction",
         "Predicts how often a star flares and how energetic its typical flare is, "
         "with an 80 % conformal prediction interval. Covers F, G, K and M dwarfs.",
     )
+    # Two tabs: one star at a time, or many stars from a CSV.
     single, batch = st.tabs(["Single star", "Batch CSV"])
     with single:
         _single_star_tab()

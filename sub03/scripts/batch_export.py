@@ -16,20 +16,25 @@ from pathlib import Path
 
 import pandas as pd
 
+# Make sub03/ importable when this file is run directly as a script.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from subtopic3 import config  # noqa: E402
 from subtopic3.predictor import FlarePredictor  # noqa: E402
 
 
 def main() -> None:
+    """Read the input CSV, predict every star and write the output CSV."""
+    # Command-line options (defaults: the full dataset -> outputs/subtopic3_predictions.csv).
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--input", type=Path, default=config.DATA_PATH)
     parser.add_argument("--output", type=Path, default=config.OUTPUT_DIR / "subtopic3_predictions.csv")
     args = parser.parse_args()
 
+    # Same batch path as the app's "Batch CSV" tab.
     df = pd.read_csv(args.input)
     result = FlarePredictor().predict_frame(df)
 
+    # Count rejected rows (invalid parameters); they keep an 'error' message.
     n_err = int(result["error"].notna().sum())
     if n_err == 0:
         result = result.drop(columns="error")  # keep the table exactly on-contract

@@ -8,6 +8,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+# Make sub03/ importable when pytest runs from any folder.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from subtopic3 import config  # noqa: E402
 from subtopic3.contracts import (  # noqa: E402
@@ -16,21 +17,25 @@ from subtopic3.contracts import (  # noqa: E402
 from subtopic3.pipeline import GatingError, check_gate, resolve_params, run_stage3  # noqa: E402
 from subtopic3.predictor import FlarePredictor, InputError, prepare_input, spectral_type_from_teff  # noqa: E402
 
+# A Sun-like G dwarf used as a known-good input in several tests.
 SUN_LIKE = {"Teff": 5770, "logg": 4.44, "Prot": 25.0}
 
 
 @pytest.fixture(scope="module")
 def predictor():
+    """Load the model once for the whole test module (it is slow to load)."""
     return FlarePredictor()
 
 
 @pytest.fixture(scope="module")
 def dataset():
+    """The full 2,910-star dataset."""
     return pd.read_csv(config.DATA_PATH)
 
 
 # ------------------------------------------------------------- contracts
 def test_stage1_schema_accepts_valid_payload():
+    """A well-formed Stage-1 payload passes validation."""
     validate_stage1_output({"is_flare": True, "KIC": 123, "stellar_params": None})
 
 
@@ -41,11 +46,13 @@ def test_stage1_schema_accepts_valid_payload():
     {"is_flare": True, "KIC": True},      # bool is not a KIC
 ])
 def test_stage1_schema_rejects_bad_payload(payload):
+    """Missing is_flare, wrong types and a bool KIC are all rejected."""
     with pytest.raises(ContractError):
         validate_stage1_output(payload)
 
 
 def test_stage3_schema_rejects_crossed_interval(predictor):
+    """An output whose lower bound is above the point estimate is rejected."""
     out, _ = predictor.predict_one(SUN_LIKE)
     bad = dict(out, pred_logE_lower=out["pred_logE"] + 1)
     with pytest.raises(ContractError):
@@ -53,6 +60,7 @@ def test_stage3_schema_rejects_crossed_interval(predictor):
 
 
 def test_output_contract_fields(predictor):
+    """predict_one returns every required contract field and nothing unexpected."""
     out, _ = predictor.predict_one(SUN_LIKE, kic=42)
     required = {k for k, (_, req, _) in STAGE3_OUTPUT_FIELDS.items() if req}
     assert required <= set(out)
@@ -64,6 +72,7 @@ def test_output_contract_fields(predictor):
 # ------------------------------------------------------- input validation
 @pytest.mark.parametrize("teff", [7500, 9000, 30000, 2000])
 def test_teff_out_of_range_rejected(teff):
+    """A-type/hotter (>= 7500 K) and too-cool (< 2600 K) stars are rejected."""
     with pytest.raises(InputError):
         spectral_type_from_teff(teff)
 
@@ -72,20 +81,24 @@ def test_teff_out_of_range_rejected(teff):
     (7499, "F"), (6000, "F"), (5999, "G"), (5300, "G"), (5299, "K"), (3900, "K"), (3899, "M"), (2600, "M"),
 ])
 def test_spectral_type_boundaries(teff, expected):
+    """Teff values on each side of the F/G/K/M thresholds get the right type."""
     assert spectral_type_from_teff(teff) == expected
 
 
 def test_inconsistent_spectral_type_rejected():
+    """A supplied spectral type that disagrees with Teff is rejected."""
     with pytest.raises(InputError):
         prepare_input({**SUN_LIKE, "spectral_type": "M"})
 
 
 def test_missing_logg_rejected():
+    """logg is required (it was never missing in training)."""
     with pytest.raises(InputError):
         prepare_input({"Teff": 5000})
 
 
 def test_optional_features_may_be_missing(predictor):
+    """Only Teff + logg is enough; missing optional values produce a note."""
     out, warnings = predictor.predict_one({"Teff": 3500, "logg": 4.8})
     assert out["spectral_type"] == "M"
     assert any("Missing" in w for w in warnings)
@@ -93,6 +106,7 @@ def test_optional_features_may_be_missing(predictor):
 
 # ------------------------------------------------------------ predictions
 def test_quantile_ordering_on_dataset(predictor, dataset):
+    """For all 2,910 stars: lower <= point <= upper, and rate bounds are positive."""
     res = predictor.predict_frame(dataset)
     assert res["error"].isna().all()
     for base in ("pred_flare_rate", "pred_logE"):
@@ -102,6 +116,7 @@ def test_quantile_ordering_on_dataset(predictor, dataset):
 
 
 def test_detection_bias_flag_only_for_f_type(predictor):
+    """The bias flag is True for an F star and False for a K star."""
     f_out, _ = predictor.predict_one({"Teff": 6500, "logg": 4.3})
     k_out, _ = predictor.predict_one({"Teff": 4500, "logg": 4.6})
     assert f_out["detection_bias_flag"] is True
@@ -109,6 +124,7 @@ def test_detection_bias_flag_only_for_f_type(predictor):
 
 
 def test_smoke_10_dataset_rows(predictor, dataset):
+    """10 random dataset rows predict cleanly, keep their KIC/type and pass the contract."""
     rows = dataset.sample(10, random_state=0)
     res = predictor.predict_frame(rows)
     assert len(res) == 10 and res["error"].isna().all()
@@ -126,6 +142,7 @@ def test_smoke_10_dataset_rows(predictor, dataset):
 # ----------------------------------------------------------------- gating
 @pytest.mark.parametrize("stage1", [None, {}, {"is_flare": False, "KIC": 1}, {"KIC": 1}])
 def test_gating_blocks_when_not_flare(stage1, predictor):
+    """No Stage-1 result, an empty one, is_flare=False or missing is_flare all block prediction."""
     with pytest.raises(GatingError):
         check_gate(stage1)
     with pytest.raises(GatingError):
@@ -133,6 +150,7 @@ def test_gating_blocks_when_not_flare(stage1, predictor):
 
 
 def test_known_kic_autofills_from_dataset(dataset, predictor):
+    """A KIC in the dataset is auto-filled from it and predicted."""
     kic = int(dataset["KIC"].iloc[0])
     params, source = resolve_params({"is_flare": True, "KIC": kic})
     assert source == "dataset" and params["Teff"] == dataset["Teff"].iloc[0]
@@ -141,5 +159,6 @@ def test_known_kic_autofills_from_dataset(dataset, predictor):
 
 
 def test_unknown_kic_uses_stage1_params():
+    """An unknown KIC falls back to the parameters Stage 1 provided."""
     params, source = resolve_params({"is_flare": True, "KIC": 1, "stellar_params": SUN_LIKE})
     assert source == "stage1" and params == SUN_LIKE

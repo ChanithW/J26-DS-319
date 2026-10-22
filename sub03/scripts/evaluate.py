@@ -30,6 +30,7 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
+# Make sub03/ importable when this file is run directly as a script.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from subtopic3 import config  # noqa: E402
 from subtopic3.predictor import FlarePredictor, prepare_input  # noqa: E402
@@ -44,25 +45,40 @@ TYPE_ORDER = ["F", "G", "K", "M"]
 
 
 def pinball(y: np.ndarray, q: np.ndarray, tau: float) -> float:
+    """Mean pinball (quantile) loss of predicted quantile ``q`` at level ``tau``.
+
+    Under-prediction is penalised by tau and over-prediction by (1 - tau), so a
+    good 10 % quantile sits below ~90 % of the observations. Lower is better.
+    """
     diff = y - q
     return float(np.mean(np.maximum(tau * diff, (tau - 1) * diff)))
 
 
 def compute_metrics(y, pt, lo, hi) -> dict:
+    """All metrics for one group of stars.
+
+    Args:
+        y: observed values; pt: point predictions; lo / hi: interval bounds.
+    """
     resid = y - pt
-    ss_tot = np.sum((y - y.mean()) ** 2)
+    ss_tot = np.sum((y - y.mean()) ** 2)  # total variance (for R2)
     return {
         "n": int(len(y)),
+        # Point accuracy
         "RMSE": float(np.sqrt(np.mean(resid ** 2))),
         "R2": float(1 - np.sum(resid ** 2) / ss_tot) if ss_tot > 0 else float("nan"),
+        # Quality of the lower / upper bounds as 10 % / 90 % quantiles
         "pinball_10": pinball(y, lo, 0.10),
         "pinball_90": pinball(y, hi, 0.90),
+        # PICP: share of observations inside the interval (target 0.80)
         "PICP": float(np.mean((y >= lo) & (y <= hi))),
+        # MPIW: average interval width (narrower is better at the same coverage)
         "MPIW": float(np.mean(hi - lo)),
     }
 
 
 def reproduce_test_split(df: pd.DataFrame) -> pd.DataFrame:
+    """Re-create the training notebook's 20 % stratified test set (verified in main)."""
     _, test = train_test_split(
         df, test_size=config.TEST_SIZE, stratify=df["spectral_type"],
         random_state=config.SPLIT_RANDOM_STATE,
@@ -71,16 +87,19 @@ def reproduce_test_split(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def plot_pred_vs_obs(test: pd.DataFrame, preds: pd.DataFrame, out: Path) -> None:
+    """Predicted vs observed scatter (with 80 % interval bars) for both targets."""
     fig, axes = plt.subplots(1, 2, figsize=(12, 5.5))
     labels = {"log_flares_per_day": "log10 flare rate [flares/day]", "median_logE": "median log10 E [erg]"}
     colors = dict(zip(TYPE_ORDER, ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728"]))
     for ax, (target, p) in zip(axes, TARGETS.items()):
         y = test[target].to_numpy()
+        # One colour per spectral type; vertical bars = prediction interval.
         for t in TYPE_ORDER:
             m = (preds["spectral_type"] == t).to_numpy()
             yerr = np.vstack([preds[p][m] - preds[f"{p}_lower"][m], preds[f"{p}_upper"][m] - preds[p][m]])
             ax.errorbar(y[m], preds[p][m], yerr=yerr, fmt="o", ms=3, alpha=0.5,
                         elinewidth=0.6, color=colors[t], label=t)
+        # Dashed diagonal = perfect prediction.
         lims = [min(y.min(), preds[f"{p}_lower"].min()), max(y.max(), preds[f"{p}_upper"].max())]
         ax.plot(lims, lims, "k--", lw=1)
         ax.set_xlabel(f"Observed {labels[target]}")
@@ -93,10 +112,13 @@ def plot_pred_vs_obs(test: pd.DataFrame, preds: pd.DataFrame, out: Path) -> None
 
 
 def plot_by_type(by_type: pd.DataFrame, out: Path) -> None:
+    """Bar charts of RMSE, PICP and MPIW per spectral type for both targets."""
     fig, axes = plt.subplots(1, 3, figsize=(14, 4))
     for ax, metric in zip(axes, ["RMSE", "PICP", "MPIW"]):
+        # Rows = spectral type (F..M), columns = target -> grouped bars.
         pivot = by_type.pivot(index="spectral_type", columns="target", values=metric).loc[TYPE_ORDER]
         pivot.plot.bar(ax=ax, rot=0)
+        # Reference line at the nominal 80 % coverage.
         if metric == "PICP":
             ax.axhline(0.80, color="k", ls="--", lw=1, label="nominal 0.80")
             ax.set_ylim(0, 1)
@@ -109,13 +131,16 @@ def plot_by_type(by_type: pd.DataFrame, out: Path) -> None:
 
 
 def main() -> None:
+    """Rebuild the test set, predict it, verify the split, then save metrics and plots."""
     config.OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     df = pd.read_csv(config.DATA_PATH)
     test = reproduce_test_split(df).reset_index(drop=True)
 
+    # Predict on the model (log) scale, the same scale the training metrics used.
     predictor = FlarePredictor()
     preds = predictor.predict_log_frame([prepare_input(r) for r in test.to_dict("records")])
 
+    # Metrics for all test stars and for each spectral type separately.
     overall_rows, type_rows = [], []
     for target, p in TARGETS.items():
         y, pt = test[target].to_numpy(), preds[p].to_numpy()
@@ -139,6 +164,7 @@ def main() -> None:
             )
     print(f"Split check passed: test RMSE matches training (n_test = {len(test)}).")
 
+    # Save tables (CSV + JSON) and figures to outputs/.
     overall.to_csv(config.OUTPUT_DIR / "metrics_overall.csv", index=False)
     by_type.to_csv(config.OUTPUT_DIR / "metrics_by_type.csv", index=False)
     (config.OUTPUT_DIR / "metrics.json").write_text(json.dumps({
@@ -151,6 +177,7 @@ def main() -> None:
     plot_pred_vs_obs(test, preds, config.OUTPUT_DIR / "pred_vs_obs_intervals.png")
     plot_by_type(by_type, config.OUTPUT_DIR / "metrics_by_type.png")
 
+    # Console summary.
     pd.set_option("display.width", 140)
     print("\nOverall:\n", overall.round(3).to_string(index=False))
     print("\nBy spectral type:\n", by_type.round(3).to_string(index=False))

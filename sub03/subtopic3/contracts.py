@@ -76,9 +76,19 @@ class ContractError(ValueError):
 
 
 def _validate(payload: Any, spec: dict, name: str) -> None:
+    """Check ``payload`` against a field spec (presence of required fields + types).
+
+    Args:
+        payload: the dict to check.
+        spec: one of STAGE1_OUTPUT_FIELDS / STAGE3_OUTPUT_FIELDS.
+        name: label used in error messages ("stage1" / "stage3").
+    Raises:
+        ContractError: describing the first problem found.
+    """
     if not isinstance(payload, dict):
         raise ContractError(f"{name} must be a dict, got {type(payload).__name__}.")
     for field, (types, required, _) in spec.items():
+        # Missing optional fields are fine; missing required ones are not.
         if field not in payload:
             if required:
                 raise ContractError(f"{name} is missing required field '{field}'.")
@@ -100,14 +110,17 @@ def validate_stage1_output(payload: Any) -> None:
 def validate_stage3_output(payload: Any) -> None:
     """Check a Sub-topic 3 payload, including interval ordering and finiteness."""
     _validate(payload, STAGE3_OUTPUT_FIELDS, "stage3")
+    # Value-level checks on top of the type checks.
     if payload["spectral_type"] not in SPECTRAL_TYPES:
         raise ContractError(f"stage3.spectral_type must be one of {SPECTRAL_TYPES}.")
+    # Both quantities: finite numbers in the order lower <= point <= upper.
     for base in ("pred_flare_rate", "pred_logE"):
         lo, mid, hi = payload[f"{base}_lower"], payload[base], payload[f"{base}_upper"]
         if not all(math.isfinite(v) for v in (lo, mid, hi)):
             raise ContractError(f"stage3.{base} values must be finite.")
         if not lo <= mid <= hi:
             raise ContractError(f"stage3.{base}: expected lower <= point <= upper, got {lo}, {mid}, {hi}.")
+    # A rate comes from 10**x, so it can never be zero or negative.
     if payload["pred_flare_rate_lower"] <= 0:
         raise ContractError("stage3.pred_flare_rate_lower must be > 0.")
 
@@ -115,6 +128,7 @@ def validate_stage3_output(payload: Any) -> None:
 def contract_as_json() -> dict:
     """Language-neutral description of both payloads (written to stage_contract.json)."""
     def describe(spec):
+        # Python types -> their names, so the result is plain JSON.
         return {
             field: {"types": [t.__name__ for t in types], "required": required, "description": desc}
             for field, (types, required, desc) in spec.items()

@@ -9,15 +9,18 @@ from __future__ import annotations
 import streamlit as st
 
 # Palette (kept in one place so the plot in ui.py can reuse it)
-SPACE_BG = "#04050d"
-PANEL_BG = "rgba(18, 21, 43, 0.72)"
-STAR_WHITE = "#e8ebff"
-MUTED_TEXT = "#9aa3d4"
-FLARE_YELLOW = "#ffd36e"
-FLARE_ORANGE = "#ff8a2b"
-FLARE_RED = "#ff4e1f"
-GRID_LINE = "#2a2f5a"
+SPACE_BG = "#04050d"                 # page background (near-black blue)
+PANEL_BG = "rgba(18, 21, 43, 0.72)"  # translucent panels (forms, cards)
+STAR_WHITE = "#e8ebff"               # main text
+MUTED_TEXT = "#9aa3d4"               # secondary text, axis ticks
+FLARE_YELLOW = "#ffd36e"             # highlights, metric values, plot point
+FLARE_ORANGE = "#ff8a2b"             # buttons, interval bars
+FLARE_RED = "#ff4e1f"                # gradient ends, third flare loop
+GRID_LINE = "#2a2f5a"                # plot grid and axis lines
 
+# All page styling + the fixed background elements. Doubled braces {{ }} are
+# literal CSS braces inside this f-string; single braces insert the palette above.
+# Background stars use repeated radial-gradient "dots" (no images needed).
 _CSS = f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap');
@@ -198,15 +201,20 @@ _HERO_SVG = f"""
       <stop offset="100%" stop-color="rgba(255,78,31,0)"/>
     </radialGradient>
   </defs>
+  <!-- pulsing outer glow (corona) -->
   <circle class="hero-glow" cx="100" cy="100" r="92" fill="url(#s3glow)"/>
+  <!-- eight slowly rotating light rays -->
   <g class="hero-rays" stroke="{FLARE_YELLOW}" stroke-opacity=".35" stroke-width="2">
     <line x1="100" y1="8" x2="100" y2="38"/><line x1="100" y1="162" x2="100" y2="192"/>
     <line x1="8" y1="100" x2="38" y2="100"/><line x1="162" y1="100" x2="192" y2="100"/>
     <line x1="35" y1="35" x2="55" y2="55"/><line x1="145" y1="145" x2="165" y2="165"/>
     <line x1="165" y1="35" x2="145" y2="55"/><line x1="35" y1="165" x2="55" y2="145"/>
   </g>
+  <!-- bright flash where a flare erupts -->
   <circle class="flare-burst" cx="138" cy="66" r="34" fill="url(#s3burst)"/>
+  <!-- the star's surface -->
   <circle class="hero-core" cx="100" cy="100" r="46" fill="url(#s3core)"/>
+  <!-- three flare (coronal) loops, drawn and erased in turn by the 'erupt' animation -->
   <path class="flare-loop l1" d="M118 62 C 140 10, 196 30, 146 84" stroke="{FLARE_YELLOW}" stroke-width="7"/>
   <path class="flare-loop l2" d="M58 128 C 8 150, 22 196, 84 146" stroke="{FLARE_ORANGE}" stroke-width="6"/>
   <path class="flare-loop l3" d="M140 128 C 190 140, 186 190, 124 146" stroke="{FLARE_RED}" stroke-width="5"/>
@@ -216,11 +224,19 @@ _HERO_SVG = f"""
 
 def apply_space_theme() -> None:
     """Inject the background, animations and widget styling (call once per page run)."""
+    # unsafe_allow_html lets Streamlit render our own <style> and <div> tags.
     st.markdown(_CSS, unsafe_allow_html=True)
 
 
 def hero(title: str, subtitle: str, tag: str = "Sub-topic 3") -> None:
-    """Page header: animated flaring star next to the title."""
+    """Page header: animated flaring star next to the title.
+
+    Args:
+        title: heading text (HTML entities such as &amp; are allowed).
+        subtitle: one-line description under the heading.
+        tag: small label shown above the heading.
+    """
+    # Layout: [ star SVG | tag / title / subtitle ], styled by .flare-hero in _CSS.
     st.markdown(
         f'<div class="flare-hero">{_HERO_SVG}<div><span class="tag">{tag}</span>'
         f"<h1>{title}</h1><p>{subtitle}</p></div></div>",
