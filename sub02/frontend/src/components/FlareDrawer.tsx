@@ -111,7 +111,7 @@ export function FlareDrawer({ results, index, onClose, onIndex }: Props) {
               </table>
               <p className="mt-2 text-sm">
                 Features missing: <strong>{r.features_missing ?? 0}</strong> of 13 · Outside training range:{" "}
-                <strong>{r.out_of_range ? "yes" : "no"}</strong>
+                <strong>{r.out_of_range == null ? "not checked" : r.out_of_range ? "yes" : "no"}</strong>
               </p>
             </section>
           </div>

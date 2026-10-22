@@ -127,4 +127,4 @@ with st.container(border=True):
         st.dataframe(pd.DataFrame({"Feature": list(feats), "Value": [helpers.fmt_num(v) for v in feats.values()]}),
                      hide_index=True, width="stretch")
         st.write(f"Features missing: **{r.get('features_missing', 0)}** of 13 · Outside training range: "
-                 f"**{'yes' if r.get('out_of_range') else 'no'}**")
+                 f"**{'not checked' if r.get('out_of_range') is None else 'yes' if r.get('out_of_range') else 'no'}**")

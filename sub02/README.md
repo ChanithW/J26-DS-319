@@ -58,6 +58,9 @@ The two front ends are independent; keep one and delete the other folder (`front
 ## Why the label is not "probability above 0.5"
 Only about 35% of flares are eruptive, so calibrated probabilities are mostly below 0.5. `predicted_label` is `eruptive` when `calibrated_probability >= base` (about 0.263, the eruptive share of the calibration set). Set `label_rule: raw_0.5` in the config for the older rule.
 
+## Reliability flag and the optional range check
+`reliability` is `confident` when the conformal check leaves exactly one answer (and no more than 5 features are missing); otherwise `uncertain`. An extra safety check, `out_of_range_check`, can also force `uncertain` for flares with a feature outside the solar training range. It is not part of the research and is **off by default** (`config/default.yaml`; `OUT_OF_RANGE_CHECK=true` for the API; `component2 predict --out-of-range-check`). While it is off, `out_of_range` is `null` ("not checked") and a confident answer says nothing about whether the flare resembles the training flares.
+
 ## Status values
 `ok`, `too_few_points` (<20 points in the window), `no_peak`, `invalid_input`. Non-`ok` rows have empty values.
 

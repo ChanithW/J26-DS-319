@@ -91,7 +91,7 @@ export function ModelInfoPage() {
           <li><strong>Ranking score.</strong> Higher means the flare looks more like the eruptive solar flares. It is for ordering flares, not a chance of a CME. The range shows how much it moves with the solar training data only.</li>
           <li><strong>Predicted eruptive / confined.</strong> A label, not a detection. It always comes with a reliability flag.</li>
           <li><strong>Confident</strong> (●) means the system could rule out one of the two answers. <strong>Uncertain</strong> (○) means it could not; treat the label as a weak lean. Most stellar flares are uncertain, and that is shown, not hidden.</li>
-          <li><strong>Warnings.</strong> Missing features or a flare unlike the training flares make the answer uncertain.</li>
+          <li><strong>Warnings.</strong> Many missing features make the answer uncertain. A check that forces flares unlike the solar training flares to “uncertain” exists, but it is switched off by default (it is not part of the research), so a confident answer does not mean the flare looks like the training data.</li>
           <li><strong>No rates.</strong> The share labelled eruptive depends strongly on how solar and stellar flares are aligned, so no stellar CME rate can be read from these outputs.</li>
         </ul>
       </section>

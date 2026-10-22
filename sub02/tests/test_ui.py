@@ -263,3 +263,11 @@ def test_streamlit_form_hints_and_spacing_warning():
 def test_streamlit_parse_points_tab_separated_spreadsheet():
     t, f, e = helpers.parse_points("-20\t1.0\n-18\t1.1\n-16 1.2\n-14,1.3")
     assert e == [] and t == [-20.0, -18.0, -16.0, -14.0]
+
+
+def test_results_say_not_checked_when_the_range_check_is_off():
+    for value, text in ((None, "not checked"), (False, "**no**"), (True, "**yes**")):
+        at = app("results", make_run([flare(flare_id="R", out_of_range=value)])).run()
+        assert not at.exception
+        body = " ".join(m.value for m in at.markdown)
+        assert f"Outside training range: " in body and (text in body), (value, body[-200:])

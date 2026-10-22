@@ -60,7 +60,9 @@ st.markdown(
     "- **Predicted eruptive / confined.** A label, not a detection. It always comes with a reliability flag.\n"
     "- **Confident** (●) means the system could rule out one of the two answers. **Uncertain** (○) means it could not; "
     "treat the label as a weak lean. Most stellar flares are uncertain, and that is shown, not hidden.\n"
-    "- **Warnings.** Missing features or a flare unlike the training flares make the answer uncertain.\n"
+    "- **Warnings.** Many missing features make the answer uncertain. A check that forces flares unlike the solar training "
+    "flares to uncertain exists, but it is switched off by default (it is not part of the research), so a confident answer "
+    "does not mean the flare looks like the training data.\n"
     "- **No rates.** The share labelled eruptive depends strongly on how solar and stellar flares are aligned, so no "
     "stellar CME rate can be read from these outputs."
 )

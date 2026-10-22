@@ -83,6 +83,16 @@ describe("ResultsTable", () => {
     expect(screen.getByText(/Several shape features could not be measured/)).toBeInTheDocument();
   });
 
+  it.each([
+    [null, "not checked"],
+    [false, "no"],
+    [true, "yes"],
+  ])("shows 'Outside training range' as %s -> %s", async (value, text) => {
+    renderWithProviders(<ResultsTable results={[flare({ flare_id: "R", out_of_range: value })]} />);
+    await userEvent.click(screen.getByRole("button", { name: "R" }));
+    expect(within(screen.getByRole("dialog")).getByText(/Outside training range/).closest("p")).toHaveTextContent(`Outside training range: ${text}`);
+  });
+
   it("paginates above 200 rows", async () => {
     const many = Array.from({ length: 250 }, (_, i) => flare({ flare_id: `F${i}`, star_id: i, calibrated_probability: 0.5 - i / 1000 }));
     renderWithProviders(<ResultsTable results={many} />);
