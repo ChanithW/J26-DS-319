@@ -51,7 +51,7 @@ def _reset_next_stage() -> None:
 # ---------------------------------------------------------------- page
 def render(next_page: str | None = None, analyzer=None) -> None:
     """Draw the whole page. analyzer is only for tests (see pipeline.analyse)."""
-    st.title("🌟 Stage 1 · Flare Detection & Energy Classification")
+    st.title("🌟 Flare Detection & Energy Classification")
     st.info("Enter a TESS star. The model finds every flare and grades its energy tier "
             "(C / M / X / Superflare) in one pass.")
 
@@ -68,10 +68,11 @@ def _single_star(next_page, analyzer) -> None:
     c1, c2, c3 = st.columns([2, 1, 1.4])
     tic = c1.text_input("TIC ID", value=st.session_state.get("c1_tic", ""),
                         placeholder="e.g. 441420236")
-    sector = c2.number_input("Sector (optional)", min_value=0, step=1, value=0,
+    sector = c2.number_input("Sector", min_value=0, step=1, value=0,
                              help="0 = first available 2-minute sector")
-    teff = c3.number_input("Teff in K (optional)", min_value=0.0, step=10.0, value=0.0,
-                           help="0 = take Teff from the TESS Input Catalog")
+    teff = c3.number_input("Teff in K (optional)", min_value=0.0, step=10.0, value=None,
+                           placeholder="e.g. 5700",
+                           help="Leave blank to take Teff from the TESS Input Catalog")
     b1, b2, _ = st.columns([1, 1, 3])
     run = b1.button("🔍 Analyse star", type="primary", width="stretch")
     if b2.button(EXAMPLE["label"], width="stretch"):
@@ -85,7 +86,7 @@ def _single_star(next_page, analyzer) -> None:
         try:
             with st.spinner("Downloading the light curve from NASA MAST and running the model ..."):
                 out = analyse(_assets(), tic, sector=int(sector) or None,
-                              teff=float(teff) or None, analyzer=analyzer)
+                              teff=float(teff) if teff else None, analyzer=analyzer)
             st.session_state[RESULT_KEY] = out
         except FileNotFoundError as e:
             st.error(f"{e}. Copy the three model files into sub01/models/.")
@@ -101,10 +102,6 @@ def _single_star(next_page, analyzer) -> None:
 
 def _show_result(out: dict, next_page) -> None:
     r, s, flares = out["result"], out["summary"], out["flares"]
-    star = r["star"]
-    st.success(f"TIC {r['tic']}, sector {r['sector']} · star type **{star['type']}** · "
-               f"Teff {star['teff']:.0f} K ({star['teff_source']}) · "
-               f"{r['n_windows']} windows checked in {r['seconds']} s")
     for w in out["warnings"]:
         st.warning(w)
     if len(r["all_sectors"]) > 1:
@@ -164,7 +161,7 @@ def _light_curve_figure(r: dict, flares: pd.DataFrame) -> go.Figure:
 
 
 def _batch(analyzer) -> None:
-    st.write("Upload a CSV with a **tic** column (and optionally **sector**). "
+    st.write("Upload a CSV with a **tic** column and **sector**. "
              "Each star is analysed and the results can be downloaded.")
     up = st.file_uploader("Stars CSV", type="csv")
     if up is None or not st.button("Run batch", type="primary"):
@@ -186,14 +183,11 @@ def _batch(analyzer) -> None:
             failed.append({"tic": row.tic, "sector": sector, "error": str(e)})
         bar.progress(k / len(stars), text=f"{k} / {len(stars)} stars")
     all_flares = pd.concat(flares, ignore_index=True) if flares else pd.DataFrame()
-    summary = pd.DataFrame(summaries)
     st.success(f"{len(summaries)} stars analysed, {len(failed)} failed.")
-    st.dataframe(summary, hide_index=True, width="stretch")
     if failed:
         st.dataframe(pd.DataFrame(failed), hide_index=True)
-    c1, c2 = st.columns(2)
-    c1.download_button("⬇ c1_all_flares.csv", _csv(all_flares), "c1_all_flares.csv", "text/csv")
-    c2.download_button("⬇ c1_star_summary.csv", _csv(summary), "c1_star_summary.csv", "text/csv")
+    st.dataframe(all_flares, hide_index=True, width="stretch")
+    st.download_button("⬇ c1_all_flares.csv", _csv(all_flares), "c1_all_flares.csv", "text/csv")
 
 
 def _model_info() -> None:
