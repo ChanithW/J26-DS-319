@@ -57,9 +57,9 @@ def render(next_page: str | None = None, analyzer=None) -> None:
 
     tab_one, tab_batch, tab_info = st.tabs(["Single star", "Batch CSV", "Model info"])
     with tab_one:
-        _single_star(next_page, analyzer)
+        _new_input_form()
     with tab_batch:
-        _batch(analyzer)
+        _new_batch_tab()
     with tab_info:
         _model_info()
 
@@ -214,3 +214,281 @@ def _csv(df: pd.DataFrame) -> bytes:
     buf = io.StringIO()
     pd.DataFrame(df).to_csv(buf, index=False)
     return ("﻿" + buf.getvalue()).encode("utf-8")      # BOM so Excel shows accents
+
+
+# ================================================================== new input form (prototype)
+# Builds and validates inputs only - it never loads the model or runs an analysis.
+# On success it writes st.session_state["c1_inputs"] for the next step to pick up.
+
+NEW_INPUT_KEY = "c1_inputs"
+CADENCE_TARGET_DAYS = 2.0 / 1440.0   # 2-minute SPOC cadence, same number as configs/config.yaml
+MIN_POINTS = 128                      # same window length as configs/config.yaml
+
+
+def _new_input_form() -> None:
+    st.caption("Prototype of the new input form: builds and checks the inputs only. "
+               "Nothing here runs the model yet.")
+
+    st.subheader("Light curve")
+    st.caption("One value per line (or comma-separated). The three lists must have the same length.")
+    if st.button("Use synthetic demo data instead", key="c1_new_demo"):
+        tt, ff, ee = _synthetic_light_curve_columns()
+        st.session_state["c1_new_time"] = tt
+        st.session_state["c1_new_flux"] = ff
+        st.session_state["c1_new_flux_err"] = ee
+
+    lc1, lc2, lc3 = st.columns(3)
+    time_text = lc1.text_area("time (BTJD days)", height=70, key="c1_new_time",
+                              placeholder="1500.000000\n1500.001389\n...")
+    flux_text = lc2.text_area("flux", height=70, key="c1_new_flux",
+                              placeholder="1.000200\n0.999800\n...")
+    err_text = lc3.text_area("flux_err", height=70, key="c1_new_flux_err",
+                             placeholder="0.000500\n0.000500\n...")
+
+    st.subheader("Star parameters")
+    s1, s2, s3 = st.columns(3)
+    teff = s1.number_input("Teff (K)", min_value=0.0, step=10.0, value=None, key="c1_new_teff_box")
+    radius = s2.number_input("Radius (R_sun)", min_value=0.0, step=0.01, value=None, key="c1_new_radius_box")
+    distance = s3.number_input("Distance (pc)", min_value=0.0, step=1.0, value=None, key="c1_new_distance_box")
+
+    if not (time_text.strip() or flux_text.strip() or err_text.strip()):
+        return
+
+    df, parse_err = _new_parse_columns(time_text, flux_text, err_text)
+    if parse_err:
+        st.error(parse_err)
+        return
+
+    clean_df, n_removed = _new_clean(df)
+    errors, warnings_ = _new_validate(df, clean_df, n_removed, teff, radius, distance)
+    for w in warnings_:
+        st.warning(w)
+    if errors:
+        for e in errors:
+            st.error(e)
+        return
+
+    st.success("Inputs look good.")
+    sources = {"teff": "user", "radius": "user", "distance": "user"}
+    _new_preview(clean_df, n_removed, teff, radius, distance, sources, {"source": "paste"})
+
+
+def _new_parse_numbers(text: str, name: str):
+    """One number per line (or comma-separated). Returns (list_of_floats, error_message)."""
+    parts = [p.strip() for p in text.replace(",", "\n").splitlines() if p.strip()]
+    values = []
+    for i, p in enumerate(parts, 1):
+        try:
+            values.append(float(p))
+        except ValueError:
+            return None, f"{name} value {i} is not numeric: '{p}'"
+    return values, None
+
+
+def _new_parse_columns(time_text: str, flux_text: str, err_text: str):
+    """Parse the three separate time/flux/flux_err lists. Returns (DataFrame, error_message)."""
+    t, err = _new_parse_numbers(time_text, "time")
+    if err:
+        return None, err
+    f, err = _new_parse_numbers(flux_text, "flux")
+    if err:
+        return None, err
+    fe, err = _new_parse_numbers(err_text, "flux_err")
+    if err:
+        return None, err
+    if not (len(t) == len(f) == len(fe)):
+        return None, (f"time ({len(t)}), flux ({len(f)}) and flux_err ({len(fe)}) "
+                      "must all have the same number of values.")
+    if not t:
+        return None, "No values entered."
+    return pd.DataFrame({"time": t, "flux": f, "flux_err": fe}), None
+
+
+BATCH_INPUT_KEY = "c1_inputs_batch"
+BATCH_COLUMNS = ["star_id", "time", "flux", "flux_err", "teff", "radius", "distance"]
+
+
+def _new_batch_tab() -> None:
+    """Batch version of the new input form: one CSV, several stars. Validates only."""
+    st.caption("Prototype of the new batch input form: builds and checks the inputs only. "
+               "Nothing here runs the model yet.")
+    st.write("Upload a CSV with one row per light-curve point: **star_id, time, flux, flux_err, "
+             "teff, radius, distance** (teff/radius/distance repeat the same value for every row "
+             "of a star).")
+    up = st.file_uploader("Batch light curve CSV", type="csv", key="c1_batch_csv")
+    if st.button("Use synthetic demo data instead", key="c1_batch_demo"):
+        st.session_state["c1_batch_demo_df"] = _synthetic_batch()
+
+    raw = None
+    if up is not None:
+        try:
+            raw = pd.read_csv(up)
+        except Exception as e:
+            st.error(f"Could not read the CSV: {e}")
+            return
+    else:
+        raw = st.session_state.get("c1_batch_demo_df")
+    if raw is None:
+        return
+
+    cols = {c.lower(): c for c in raw.columns}
+    missing = [c for c in BATCH_COLUMNS if c not in cols]
+    if missing:
+        st.error(f"Missing column(s): {', '.join(missing)}.")
+        return
+    raw = raw.rename(columns={cols[c]: c for c in BATCH_COLUMNS})
+
+    rows, results = [], []
+    for star_id, g in raw.groupby("star_id"):
+        df = g[["time", "flux", "flux_err"]].apply(pd.to_numeric, errors="coerce")
+        teff_vals = pd.to_numeric(g["teff"], errors="coerce").dropna()
+        radius_vals = pd.to_numeric(g["radius"], errors="coerce").dropna()
+        distance_vals = pd.to_numeric(g["distance"], errors="coerce").dropna()
+        teff = float(teff_vals.iloc[0]) if len(teff_vals) else None
+        radius = float(radius_vals.iloc[0]) if len(radius_vals) else None
+        distance = float(distance_vals.iloc[0]) if len(distance_vals) else None
+
+        clean_df, n_removed = _new_clean(df)
+        errors, warnings_ = _new_validate(df, clean_df, n_removed, teff, radius, distance)
+        status = "ok" if not errors else "error"
+        results.append({
+            "star_id": star_id, "status": status, "points": len(clean_df), "rows_removed": n_removed,
+            "teff": teff, "radius": radius, "distance": distance,
+            "message": "; ".join(errors) if errors else "; ".join(warnings_),
+        })
+        if status == "ok":
+            rows.append({
+                "star_id": star_id, "time": clean_df["time"].values, "flux": clean_df["flux"].values,
+                "flux_err": clean_df["flux_err"].values, "teff": teff, "radius": radius,
+                "distance": distance, "source": "batch_csv",
+            })
+
+    summary = pd.DataFrame(results)
+    st.subheader("Batch summary")
+    st.dataframe(summary, hide_index=True, width="stretch")
+    st.caption(f"{sum(r['status'] == 'ok' for r in results)} of {len(results)} star(s) passed validation.")
+
+    if rows and st.button("Continue with the valid stars", type="primary", key="c1_batch_continue"):
+        st.session_state[BATCH_INPUT_KEY] = rows
+        st.success(f"Saved {len(rows)} star(s) to st.session_state['{BATCH_INPUT_KEY}']. "
+                   "Ready for the next step.")
+
+
+def _synthetic_batch() -> pd.DataFrame:
+    """Two small synthetic stars, so the batch form can be tried with no file."""
+    frames = []
+    for star_id, (teff, radius, distance) in enumerate(
+            [(5700.0, 1.0, 50.0), (3500.0, 0.3, 20.0)], start=1):
+        df = _synthetic_light_curve().copy()
+        df["star_id"] = f"demo_{star_id}"
+        df["teff"], df["radius"], df["distance"] = teff, radius, distance
+        frames.append(df)
+    return pd.concat(frames, ignore_index=True)[BATCH_COLUMNS]
+
+
+def _new_clean(df: pd.DataFrame):
+    """Drop missing/duplicate rows and bad-quality points; sort by time."""
+    n0 = len(df)
+    d = df.dropna(subset=["time", "flux", "flux_err"]).copy()
+    if "quality" in d.columns:
+        d = d[d["quality"].fillna(0) == 0]
+    d = d.sort_values("time").drop_duplicates(subset="time", keep="first")
+    return d.reset_index(drop=True), n0 - len(d)
+
+
+def _new_validate(raw_df, clean_df, n_removed, teff, radius, distance):
+    """Plain-English errors (block continuing) and warnings (allow continuing)."""
+    errors, warnings_ = [], []
+    if raw_df["flux"].isna().all():
+        errors.append("The flux column is entirely missing.")
+    if raw_df["flux_err"].isna().all():
+        errors.append("The flux_err column is entirely missing.")
+    elif (raw_df["flux_err"].dropna() <= 0).all():
+        errors.append("flux_err is zero or negative for every point.")
+    if len(clean_df) < MIN_POINTS:
+        errors.append(f"Only {len(clean_df)} valid points after cleaning (need at least {MIN_POINTS}).")
+    if teff is None or teff <= 0:
+        errors.append("Teff is required and must be greater than zero.")
+    if radius is None or radius <= 0:
+        errors.append("Radius is required and must be greater than zero.")
+    if distance is None or distance <= 0:
+        errors.append("Distance is required and must be greater than zero.")
+    if errors:
+        return errors, warnings_
+
+    if len(clean_df) > 1:
+        cadence = float(np.median(np.diff(clean_df["time"].values)))
+        if not (0.8 * CADENCE_TARGET_DAYS <= cadence <= 1.2 * CADENCE_TARGET_DAYS):
+            warnings_.append(f"Median time step is {cadence * 1440:.2f} min, not close to the expected 2 min.")
+    if len(raw_df) and n_removed / len(raw_df) > 0.20:
+        warnings_.append(f"{n_removed} of {len(raw_df)} points ({n_removed / len(raw_df):.0%}) were removed by cleaning.")
+    if not (2500 <= teff <= 7500):
+        warnings_.append(f"Teff {teff:.0f} K is outside the usual 2500-7500 K range.")
+    if radius > 2:
+        warnings_.append(f"Radius {radius:.2f} R_sun is large for a dwarf star (possible giant).")
+    if distance > 2000:
+        warnings_.append(f"Distance {distance:.0f} pc is unusually far.")
+    return errors, warnings_
+
+
+def _new_preview(clean_df, n_removed, teff, radius, distance, sources, meta) -> None:
+    t, f = clean_df["time"].values, clean_df["flux"].values
+    cadence_min = float(np.median(np.diff(t))) * 1440.0 if len(t) > 1 else float("nan")
+    span_days = float(t[-1] - t[0]) if len(t) else 0.0
+
+    st.subheader("Preview")
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Points", len(clean_df))
+    m2.metric("Time span (days)", f"{span_days:.2f}")
+    m3.metric("Median cadence (min)", f"{cadence_min:.2f}" if np.isfinite(cadence_min) else "n/a")
+    m4.metric("Rows removed", n_removed)
+    st.caption("Median flux_err: {0:.5f} - Teff {1:.0f} K ({2}) - Radius {3:.2f} R_sun ({4}) - "
+              "Distance {5:.0f} pc ({6})".format(
+                  float(np.median(clean_df["flux_err"].values)), teff, sources.get("teff", "user"),
+                  radius, sources.get("radius", "user"), distance, sources.get("distance", "user")))
+
+    st.plotly_chart(_new_gap_figure(t, f), width="stretch")
+
+    if st.button("Continue", type="primary", key="c1_new_continue"):
+        st.session_state[NEW_INPUT_KEY] = {
+            "time": t, "flux": f, "flux_err": clean_df["flux_err"].values,
+            "teff": float(teff), "radius": float(radius), "distance": float(distance),
+            "tic_id": meta.get("tic_id"), "sector": meta.get("sector"),
+            "source": meta.get("source"), "star_value_sources": sources,
+        }
+        st.success("Saved to st.session_state['c1_inputs']. Ready for the next step.")
+
+
+def _new_gap_figure(t: np.ndarray, f: np.ndarray):
+    """Light curve line, with gaps longer than ~10 points shown as breaks."""
+    if len(t) > 1:
+        step = np.median(np.diff(t))
+        gap_at = np.where(np.diff(t) > 10 * step)[0]
+        tt, ff = list(t), list(f)
+        for idx in gap_at[::-1]:
+            tt.insert(idx + 1, np.nan)
+            ff.insert(idx + 1, np.nan)
+    else:
+        tt, ff = list(t), list(f)
+    fig = go.Figure(go.Scattergl(x=tt, y=ff, mode="lines", line=dict(width=1, color="#5B7FA6")))
+    fig.update_layout(height=320, margin=dict(l=10, r=10, t=10, b=10), template="plotly_white",
+                      xaxis_title="Time (BTJD)", yaxis_title="Flux")
+    return fig
+
+
+def _synthetic_light_curve() -> pd.DataFrame:
+    """A small in-memory demo light curve, so the form can be tried with no file or internet."""
+    rng = np.random.RandomState(0)
+    t = np.arange(0.0, 3.0, CADENCE_TARGET_DAYS)
+    flux = 1.0 + rng.normal(0, 0.0005, len(t))
+    peak = len(t) // 2
+    minutes_from_peak = (t - t[peak]) * 1440.0
+    flux += np.where(minutes_from_peak < 0, 0.0, 0.01 * np.exp(-minutes_from_peak / 15.0))
+    flux_err = np.full(len(t), 0.0005)
+    return pd.DataFrame({"time": t, "flux": flux, "flux_err": flux_err})
+
+
+def _synthetic_light_curve_columns():
+    """The synthetic demo light curve as three separate newline-joined strings."""
+    df = _synthetic_light_curve()
+    return (tuple("\n".join(f"{v:.6f}" for v in df[col]) for col in ("time", "flux", "flux_err")))
