@@ -1,0 +1,14 @@
+{
+  "version": "v2",
+  "threshold": 0.43,
+  "seed": 42,
+  "dropout": 0.5,
+  "l2": 0.0001,
+  "lr": 0.0005,
+  "augmentation": {
+    "max_shift": 8,
+    "noise_ch1": 0.2
+  },
+  "epochs_trained": 35,
+  "energy_loss_weight": 2.0
+}

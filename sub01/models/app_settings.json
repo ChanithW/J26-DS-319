@@ -1,0 +1,11 @@
+{
+  "confirmed": {
+    "threshold": 0.9,
+    "rule": "2 pts \u2265 2.5\u03c3"
+  },
+  "candidate": {
+    "threshold": 0.7,
+    "rule": "2 pts \u2265 2.5\u03c3"
+  },
+  "tuned_on": "validation light curves (220)"
+}
