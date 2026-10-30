@@ -1,3 +1,2 @@
-# Sub-component 1 · Flare Detection and Energy Prediction
+# Sub-component 1 · Deep Learning Based Detection and Energy Classification of Stellar Flares from Photometric Light Curves
 
-Deep-learning based detection and energy prediction of stellar flares from TESS photometric light curves
